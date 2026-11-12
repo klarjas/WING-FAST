@@ -591,13 +591,47 @@
     try { localStorage.setItem("wing_fast_language", currentLanguage); } catch (_) {}
     translateElement(document.body);
   }
-  const selector = document.getElementById("languageSelect");
-  if (selector) {
+  const languageCodes = { km: "KH", en: "EN", zh: "CH" };
+  const languageToggle = document.getElementById("languageToggle");
+  const languageCode = document.getElementById("languageCode");
+  const languageMenu = document.getElementById("languageMenu");
+  const languageChoices = [...document.querySelectorAll(".language-choice")];
+  function updateLanguageControl(language) {
+    if (languageCode) languageCode.textContent = languageCodes[language] || "KH";
+    languageChoices.forEach((button) => {
+      const active = button.dataset.language === language;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+  }
+  function closeLanguageMenu() {
+    languageMenu?.classList.add("hidden");
+    languageToggle?.setAttribute("aria-expanded", "false");
+  }
+  if (languageToggle && languageMenu) {
     let saved = "km";
     try { saved = localStorage.getItem("wing_fast_language") || "km"; } catch (_) {}
-    selector.value = ["km","zh","en"].includes(saved) ? saved : "km";
-    selector.addEventListener("change", () => setLanguage(selector.value));
-    setLanguage(selector.value);
+    saved = ["km","zh","en"].includes(saved) ? saved : "km";
+    setLanguage(saved);
+    updateLanguageControl(saved);
+    languageToggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const opening = languageMenu.classList.contains("hidden");
+      languageMenu.classList.toggle("hidden", !opening);
+      languageToggle.setAttribute("aria-expanded", String(opening));
+    });
+    languageChoices.forEach((button) => button.addEventListener("click", () => {
+      const language = button.dataset.language;
+      setLanguage(language);
+      updateLanguageControl(language);
+      closeLanguageMenu();
+    }));
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".language-switcher")) closeLanguageMenu();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeLanguageMenu();
+    });
   }
   const observer = new MutationObserver((records) => {
     for (const record of records) {
