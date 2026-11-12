@@ -146,7 +146,8 @@ def ensure_user(conn, tg_user: dict):
             (uid, first, username, role, int(time.time()))
         )
     else:
-        role = "admin" if uid in ADMIN_IDS else row["role"]
+        # Admin privileges are granted only by the server-side ADMIN_IDS allowlist.
+        role = "admin" if uid in ADMIN_IDS else ("passenger" if row["role"] == "admin" else row["role"])
         conn.execute(
             "UPDATE users SET first_name=?, username=?, role=? WHERE telegram_id=?",
             (first, username, role, uid)
@@ -245,6 +246,12 @@ def driver_apply(payload: DriverApplication, authorization: Optional[str] = Head
         ).fetchone()
         if blocked:
             raise HTTPException(403, "This vehicle plate is blocked")
+        duplicate = conn.execute(
+            "SELECT 1 FROM drivers WHERE lower(plate_number)=lower(?) AND telegram_id<>? AND status IN ('pending','approved')",
+            (payload.plate_number, uid)
+        ).fetchone()
+        if duplicate:
+            raise HTTPException(409, "This license plate is already registered")
         conn.execute("""
             INSERT INTO drivers(telegram_id,phone,vehicle_type,vehicle_model,plate_number,status,updated_at)
             VALUES(?,?,?,?,?,'pending',?)
