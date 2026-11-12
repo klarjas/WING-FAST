@@ -3,7 +3,7 @@
   const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
   if (tg) { tg.ready(); tg.expand(); }
   const $ = (id) => document.getElementById(id);
-  const state = { user: null, driver: null, pickup: null, watchId: null, locationTimer: null };
+  const state = { user:null,driver:null,pickup:null,destination:null,map:null,driverMarkers:new Map(),pickupMarker:null,destinationMarker:null,routeLine:null,mapMode:"pickup",liveTimer:null,watchId:null,locationTimer:null };
   const authHeaders = () => ({ "Content-Type": "application/json", "Authorization": "tma " + (tg ? tg.initData : "") });
   async function api(path, options = {}) {
     const response = await fetch(path, { ...options, headers: { ...authHeaders(), ...(options.headers || {}) } });
@@ -29,6 +29,18 @@
     if (view === "driver") loadDriverView();
     if (view === "admin") loadAdmin();
   }
+
+  function mapIcon(type){const h=type==="driver"?'<div class="driver-marker">🚕</div>':type==="pickup"?'<div class="pickup-marker"></div>':'<div class="destination-marker"></div>';return L.divIcon({html:h,className:"",iconSize:type==="driver"?[34,34]:[18,18],iconAnchor:type==="driver"?[17,17]:[9,9]});}
+  function initMap(){if(state.map||!window.L)return;state.map=L.map("liveMap").setView([11.5564,104.9282],13);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(state.map);state.map.on("click",e=>{const p={lat:e.latlng.lat,lon:e.latlng.lng};state.mapMode==="pickup"?setPickup(p,"Map selection"):setDestination(p,"Map selection");});setTimeout(()=>state.map.invalidateSize(),300);}
+  function setPickup(p,label){state.pickup={lat:+p.lat,lon:+p.lon};$("pickupText").value=label||state.pickup.lat.toFixed(5)+", "+state.pickup.lon.toFixed(5);if(state.map){if(state.pickupMarker)state.pickupMarker.setLatLng([p.lat,p.lon]);else state.pickupMarker=L.marker([p.lat,p.lon],{icon:mapIcon("pickup")}).addTo(state.map);}}
+  function setDestination(p,label){state.destination={lat:+p.lat,lon:+p.lon};$("destination").value=label||state.destination.lat.toFixed(5)+", "+state.destination.lon.toFixed(5);if(state.map){if(state.destinationMarker)state.destinationMarker.setLatLng([p.lat,p.lon]);else state.destinationMarker=L.marker([p.lat,p.lon],{icon:mapIcon("destination")}).addTo(state.map);}}
+  function mapMode(mode){state.mapMode=mode;document.querySelectorAll("[data-map-mode]").forEach(x=>x.classList.toggle("active",x.dataset.mapMode===mode));$("mapStatus").textContent=mode==="pickup"?"Tap the map to set passenger pickup":"Tap the map to set destination";}
+  function coordsFromMapLink(s){const patterns=[/[?&](?:q|query|destination|center)=(-?\\d+(?:\\.\\d+)?)[,%2C ]+(-?\\d+(?:\\.\\d+)?)/i,/@(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)/,/!3d(-?\\d+(?:\\.\\d+)?)!4d(-?\\d+(?:\\.\\d+)?)/,/^\\s*(-?\\d+(?:\\.\\d+)?)\\s*,\\s*(-?\\d+(?:\\.\\d+)?)\\s*$/];for(const re of patterns){const m=String(s).match(re);if(m){const lat=+m[1],lon=+m[2];if(lat>=-90&&lat<=90&&lon>=-180&&lon<=180)return{lat,lon};}}return null;}
+  function useMapLink(){const p=coordsFromMapLink($("googleMapsLink").value.trim());if(!p){message("bookingMessage","Could not read coordinates. Paste a Google Maps URL containing coordinates, or latitude,longitude.","error");return;}setDestination(p,"Google Maps location");mapMode("destination");state.map.setView([p.lat,p.lon],16);}
+  async function refreshDrivers(){if(!state.map)return;try{const data=await api("/api/drivers/live"),ids=new Set();data.items.forEach(d=>{ids.add(d.driver_id);const p=[+d.latitude,+d.longitude];let m=state.driverMarkers.get(d.driver_id);if(!m){m=L.marker(p,{icon:mapIcon("driver")}).addTo(state.map);state.driverMarkers.set(d.driver_id,m);}else m.setLatLng(p);m.bindPopup("<b>"+escapeHtml(d.vehicle_model||"WING FAST Driver")+"</b><br>"+escapeHtml(d.plate_number||""));});for(const [id,m] of state.driverMarkers)if(!ids.has(id)){state.map.removeLayer(m);state.driverMarkers.delete(id);}$("driverCount").textContent=data.items.length+" drivers online · refresh 5 sec";if(!$("mapStatus").textContent.startsWith("Tap the map"))$("mapStatus").textContent=data.items.length?"Live drivers on map":"No drivers currently online";await refreshDriverRoute();}catch(_){$("driverCount").textContent="Waiting for live driver locations…";}}
+  async function refreshDriverRoute(){try{const data=await api("/api/bookings/mine"),b=data.items.find(x=>["accepted","arrived","in_progress"].includes(x.status)&&x.driver_lat!=null);if(!b||!state.pickup){if(state.routeLine){state.map.removeLayer(state.routeLine);state.routeLine=null;}return;}const a=[+b.driver_lat,+b.driver_lon],z=[+b.pickup_lat,+b.pickup_lon],u="https://router.project-osrm.org/route/v1/driving/"+a[1]+","+a[0]+";"+z[1]+","+z[0]+"?overview=full&geometries=geojson",r=await(await fetch(u)).json();if(!r.routes||!r.routes[0])return;const pts=r.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);if(state.routeLine)state.routeLine.setLatLngs(pts);else state.routeLine=L.polyline(pts,{color:"#FFC928",weight:5,opacity:.9}).addTo(state.map);$("mapStatus").textContent="Your driver is on the way";}catch(_){}}
+  function startLiveMap(){initMap();if(!state.map)return;refreshDrivers();if(state.liveTimer)clearInterval(state.liveTimer);state.liveTimer=setInterval(refreshDrivers,5000);}
+
   async function boot() {
     try {
       if (!tg && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") throw new Error("Please open WING FAST from its Telegram bot.");
@@ -39,15 +51,14 @@
       if (["driver","driver_pending"].includes(state.user.role) || state.driver) document.querySelector('[data-view="driver"]').classList.remove("hidden");
       if (state.user.role === "admin") document.querySelector('[data-view="admin"]').classList.remove("hidden");
       $("loading").classList.add("hidden"); $("errorPanel").classList.add("hidden"); $("appContent").classList.remove("hidden");
-      if (!state.pickup) locate(false);
+      startLiveMap(); if (!state.pickup) locate(false);
     } catch (e) { showError(e); }
   }
   function locate(showAlert = true) {
     if (!navigator.geolocation) { if (showAlert) message("bookingMessage", "GPS is not supported by this device.", "error"); return; }
     $("locateBtn").textContent = "WAIT…";
     navigator.geolocation.getCurrentPosition((pos) => {
-      state.pickup = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-      $("pickupText").value = pos.coords.latitude.toFixed(5) + ", " + pos.coords.longitude.toFixed(5);
+      setPickup({lat:pos.coords.latitude,lon:pos.coords.longitude},pos.coords.latitude.toFixed(5)+", "+pos.coords.longitude.toFixed(5));
       $("locateBtn").textContent = "UPDATED";
       if (showAlert) message("bookingMessage", "Pickup location updated.", "success");
     }, (err) => {
@@ -56,8 +67,7 @@
       if (tg && typeof tg.requestLocation === "function") {
         try { tg.requestLocation((location) => {
           if (location && Number.isFinite(location.latitude) && Number.isFinite(location.longitude)) {
-            state.pickup = { lat: location.latitude, lon: location.longitude };
-            $("pickupText").value = location.latitude.toFixed(5) + ", " + location.longitude.toFixed(5);
+            setPickup({lat:location.latitude,lon:location.longitude},location.latitude.toFixed(5)+", "+location.longitude.toFixed(5));
           }
         }); } catch (_) {}
       }
@@ -71,10 +81,10 @@
     try {
       const result = await api("/api/bookings", { method:"POST", body: JSON.stringify({
         pickup_lat: state.pickup.lat, pickup_lon: state.pickup.lon, pickup_text: $("pickupText").value,
-        destination_text: destination, vehicle_type: $("vehicleType").value, payment_method: $("payment").value
+        destination_text: destination, destination_lat:state.destination?state.destination.lat:null, destination_lon:state.destination?state.destination.lon:null, vehicle_type:$("vehicleType").value, payment_method:$("payment").value
       })});
       message("bookingMessage", "Ride request created: " + result.booking_id, "success");
-      $("destination").value = "";
+      $("destination").value="";state.destination=null;if(state.destinationMarker){state.map.removeLayer(state.destinationMarker);state.destinationMarker=null;}
     } catch (e) { message("bookingMessage", e.message, "error"); }
     finally { btn.disabled = false; btn.innerHTML = 'FIND A DRIVER <span>→</span>'; }
   }
@@ -170,7 +180,10 @@
     const reject = event.target.closest("[data-reject]"); if (reject) adminAction("/api/admin/drivers/" + encodeURIComponent(reject.dataset.reject) + "/reject");
     const block = event.target.closest("[data-block]"); if (block && confirm("Block this driver and account?")) adminAction("/api/admin/drivers/" + encodeURIComponent(block.dataset.block) + "/block");
   });
-  $("locateBtn").addEventListener("click", () => locate(true));
+  $("locateBtn").addEventListener("click",()=>locate(true));
+  document.querySelectorAll("[data-map-mode]").forEach(x=>x.addEventListener("click",()=>mapMode(x.dataset.mapMode)));
+  $("useMapLinkBtn").addEventListener("click",useMapLink);
+  $("destination").addEventListener("change",()=>{const p=coordsFromMapLink($("destination").value);if(p)setDestination(p,$("destination").value);});
   $("bookBtn").addEventListener("click", bookRide);
   $("applyDriverBtn").addEventListener("click", applyDriver);
   $("shareLocationBtn").addEventListener("click", startLocation);
