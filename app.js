@@ -60,19 +60,6 @@
   async function requestCurrentLocation(showMessage=true){if(!navigator.geolocation){if(showMessage)message("bookingMessage","GPS is not supported by this device.","error");return;}if(state.locationPermission==="denied"){if(showMessage)message("bookingMessage","Location permission is blocked in browser settings. Enable it once to continue.","error");return;}if(state.locationAsked&&state.locationPermission==="prompt"){if(showMessage)message("bookingMessage","Please allow location access in your browser settings.","error");return;}state.locationAsked=true;$("useCurrentLocation").textContent="RECENTERING…";navigator.geolocation.getCurrentPosition(pos=>{state.locationPermission="granted";const p={lat:pos.coords.latitude,lon:pos.coords.longitude};state.mapCandidate=p;if(state.map)state.map.setView([p.lat,p.lon],17);$("selectedCoordinates").textContent=p.lat.toFixed(5)+", "+p.lon.toFixed(5)+" · GPS";$("useCurrentLocation").textContent="RECENTER GPS";},err=>{if(err.code===1)state.locationPermission="denied";else if(err.code===2)state.locationPermission="unavailable";$("useCurrentLocation").textContent="USE MY GPS";if(showMessage)message("bookingMessage",err.code===1?"Location permission denied. Enable it in browser settings.":err.message||"Unable to get GPS location.","error");},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});}
   async function checkLocationPermission(){if(!navigator.permissions||!navigator.permissions.query)return;try{const p=await navigator.permissions.query({name:"geolocation"});state.locationPermission=p.state;p.onchange=()=>{state.locationPermission=p.state;};}catch(_){} }
 
-  function animateAppReveal() {
-    const view = document.querySelector("#rideView:not(.hidden)");
-    if (!view) return;
-    const items = Array.from(view.querySelectorAll(":scope > :not(.hidden), .vehicle-option"))
-      .filter(el => !el.classList.contains("hidden"))
-      .sort((a,b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
-    items.forEach((el, index) => {
-      el.classList.remove("anime-reveal");
-      el.style.animationDelay = (index * 105) + "ms";
-      void el.offsetWidth;
-      el.classList.add("anime-reveal");
-    });
-  }
 
   async function boot() {
     $("loading").classList.remove("hidden");
@@ -93,7 +80,6 @@
       if (["driver","driver_pending"].includes(state.user.role) || state.driver) $("profileDriverAction").classList.remove("hidden");
       if (state.user.role === "admin") $("profileAdminAction").classList.remove("hidden");
       $("loading").classList.add("hidden"); $("errorPanel").classList.add("hidden"); $("appContent").classList.remove("hidden");
-      animateAppReveal();
       checkLocationPermission();
       loadPromotion();
     } catch (e) { showError(e); }
@@ -187,14 +173,17 @@
       if (targetId === "promotionImage") {
         if (promotionObjectUrl) URL.revokeObjectURL(promotionObjectUrl);
         promotionObjectUrl = url;
+        target.onload = () => $("promotionBanner").classList.add("has-image");
+        target.onerror = () => $("promotionBanner").classList.remove("has-image");
         target.src = url;
-        $("promotionBanner").classList.remove("hidden");
       } else {
         target.innerHTML = '<img src="' + url + '" alt="Current promotion">';
       }
     } catch (_) {
-      if (targetId === "promotionImage") $("promotionBanner").classList.add("hidden");
-      else target.textContent = "Image preview unavailable";
+      if (targetId === "promotionImage") {
+        $("promotionBanner").classList.remove("has-image");
+        target.removeAttribute("src");
+      } else target.textContent = "Image preview unavailable";
     }
   }
   async function loadPromotion() {
@@ -202,7 +191,8 @@
       const data = await api("/api/promotions/active");
       const p = data.promotion;
       if (!p) {
-        $("promotionBanner").classList.add("hidden");
+        $("promotionBanner").classList.remove("has-image");
+        $("promotionImage").removeAttribute("src");
         $("adminPromotionPreview").innerHTML = '<span>No promotion image</span>';
         $("removePromotionBtn").classList.add("hidden");
         return;
@@ -211,7 +201,8 @@
       await loadPromotionImage(p.media_id, "adminPromotionPreview");
       $("removePromotionBtn").classList.remove("hidden");
     } catch (e) {
-      $("promotionBanner").classList.add("hidden");
+      $("promotionBanner").classList.remove("has-image");
+      $("promotionImage").removeAttribute("src");
       if ($("promotionMessage")) message("promotionMessage", e.message, "error");
     }
   }
@@ -239,7 +230,8 @@
       const active = await api("/api/promotions/active");
       if (!active.promotion || !confirm("Remove the current promotion image?")) return;
       await api("/api/admin/promotions/" + encodeURIComponent(active.promotion.id), {method:"DELETE"});
-      $("promotionBanner").classList.add("hidden");
+      $("promotionBanner").classList.remove("has-image");
+      $("promotionImage").removeAttribute("src");
       $("adminPromotionPreview").innerHTML = '<span>No promotion image</span>';
       $("removePromotionBtn").classList.add("hidden");
       message("promotionMessage", "Promotion removed.", "success");
