@@ -490,3 +490,110 @@ def block_driver(driver_id: str, authorization: Optional[str] = Header(default=N
         conn.execute("UPDATE public.driver_locations SET is_online=FALSE,updated_at=NOW() WHERE driver_id=%s",
                      (driver_id,))
     return {"ok": True, "blocked": True}
+
+
+# Telegram Bot polling: /start opens the WING FAST Mini App.
+import asyncio
+import urllib.error
+import urllib.request
+
+MINI_APP_URL = os.getenv("MINI_APP_URL", "https://topfan-ivpq.onrender.com").strip()
+
+
+def telegram_api(method: str, payload: dict, timeout: int = 35) -> dict:
+    if not BOT_TOKEN:
+        raise RuntimeError("BOT_TOKEN is not configured")
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/{method}"
+    body = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        url, data=body, headers={"Content-Type": "application/json"}, method="POST"
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        result = json.loads(response.read().decode("utf-8"))
+    if not result.get("ok"):
+        raise RuntimeError(result.get("description", "Telegram API request failed"))
+    return result
+
+
+def handle_bot_update(update: dict) -> None:
+    message = update.get("message") or {}
+    chat = message.get("chat") or {}
+    chat_id = chat.get("id")
+    text_value = (message.get("text") or "").strip()
+    if not chat_id or not text_value:
+        return
+    command = text_value.split()[0].split("@")[0].lower()
+    if command in ("/start", "/help"):
+        payload = {
+            "chat_id": chat_id,
+            "text": (
+                "សូមស្វាគមន៍មកកាន់ WING FAST! 🚕\\n"
+                "កក់ការធ្វើដំណើរ និងចុះឈ្មោះជាអ្នកបើកបរ តាម Mini App ខាងក្រោម។"
+            ),
+            "reply_markup": {
+                "inline_keyboard": [[{
+                    "text": "🚕 Open WING FAST",
+                    "web_app": {"url": MINI_APP_URL}
+                }]]
+            }
+        }
+        telegram_api("sendMessage", payload, timeout=15)
+    elif command == "/ping":
+        telegram_api("sendMessage", {
+            "chat_id": chat_id, "text": "WING FAST Bot is online ✅"
+        }, timeout=15)
+
+
+async def telegram_polling_loop():
+    if not BOT_TOKEN:
+        print("Telegram bot polling disabled: BOT_TOKEN is missing")
+        return
+    try:
+        # Switch this bot to long polling; a bot cannot poll and use a webhook simultaneously.
+        await asyncio.to_thread(telegram_api, "deleteWebhook", {"drop_pending_updates": False}, 20)
+        me_result = await asyncio.to_thread(telegram_api, "getMe", {}, 15)
+        bot_name = (me_result.get("result") or {}).get("username", "unknown")
+        print(f"Telegram bot polling started: @{bot_name}")
+    except Exception as exc:
+        print(f"Telegram bot startup failed: {type(exc).__name__}: {exc}")
+        return
+
+    offset = None
+    while True:
+        try:
+            params = {"timeout": 25, "allowed_updates": ["message"]}
+            if offset is not None:
+                params["offset"] = offset
+            result = await asyncio.to_thread(telegram_api, "getUpdates", params, 35)
+            for update in result.get("result", []):
+                offset = update["update_id"] + 1
+                try:
+                    await asyncio.to_thread(handle_bot_update, update)
+                except Exception as exc:
+                    print(f"Telegram update handling failed: {type(exc).__name__}: {exc}")
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            print(f"Telegram polling error: {type(exc).__name__}: {exc}")
+            await asyncio.sleep(5)
+
+
+_bot_polling_task = None
+
+
+@app.on_event("startup")
+async def start_telegram_bot():
+    global _bot_polling_task
+    if BOT_TOKEN:
+        _bot_polling_task = asyncio.create_task(telegram_polling_loop())
+
+
+@app.on_event("shutdown")
+async def stop_telegram_bot():
+    global _bot_polling_task
+    if _bot_polling_task:
+        _bot_polling_task.cancel()
+        try:
+            await _bot_polling_task
+        except asyncio.CancelledError:
+            pass
