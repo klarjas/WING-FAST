@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0B0D10">
   <title>WING FAST</title>
   <link rel="stylesheet" href="/static/style.css">
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -27,10 +27,13 @@
         </nav>
 
         <section id="rideView" class="view">
-          <div class="map-card">
-            <div class="map-grid"></div><div class="map-label"><span class="map-dot"></span> CAMBODIA SERVICE AREA</div>
-            <div class="map-pin">⌖</div><div class="map-bottom"><b>Set your pickup point</b><span>Use your current GPS location</span></div>
+          <div class="map-card live-map-card">
+            <div id="liveMap" aria-label="WING FAST live driver map"></div>
+            <div class="map-label"><span class="map-dot"></span> LIVE DRIVERS · CAMBODIA</div>
+            <div class="map-tools"><button type="button" class="map-mode active" data-map-mode="pickup">SET PICKUP</button><button type="button" class="map-mode" data-map-mode="destination">SET DESTINATION</button></div>
+            <div class="map-bottom"><b id="mapStatus">Finding nearby drivers…</b><span id="driverCount">Live driver locations update while they are online</span></div>
           </div>
+          <div class="map-input-tools"><input id="googleMapsLink" placeholder="Paste Google Maps link (optional)"><button type="button" id="useMapLinkBtn" class="small-action">USE LINK</button></div>
           <div class="panel form-panel">
             <div class="section-heading"><div><span class="eyebrow">BOOK A RIDE</span><h2>Where to?</h2></div><span class="step">01 / 02</span></div>
             <label>Pickup location</label>
