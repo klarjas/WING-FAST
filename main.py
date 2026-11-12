@@ -255,6 +255,30 @@ def driver_location(payload: LocationUpdate, authorization: Optional[str] = Head
     return {"ok": True}
 
 
+
+@app.get("/api/drivers/live")
+def live_drivers(authorization: Optional[str] = Header(default=None)):
+    auth_user(authorization)
+    with db() as conn:
+        rows = conn.execute("""
+            SELECT d.id AS driver_id, dl.latitude, dl.longitude,
+                   v.vehicle_type, v.model AS vehicle_model, v.plate_number,
+                   EXTRACT(EPOCH FROM dl.updated_at)::BIGINT AS updated_at
+            FROM public.driver_locations dl
+            JOIN public.drivers d ON d.id=dl.driver_id
+            JOIN public.users u ON u.id=d.user_id
+            LEFT JOIN LATERAL (
+                SELECT vehicle_type, model, plate_number FROM public.vehicles
+                WHERE driver_id=d.id AND status='approved'
+                ORDER BY created_at DESC LIMIT 1
+            ) v ON TRUE
+            WHERE d.status='approved' AND u.account_status='active'
+              AND dl.is_online=TRUE AND dl.updated_at > NOW() - INTERVAL '2 minutes'
+            ORDER BY dl.updated_at DESC LIMIT 500
+        """).fetchall()
+    return {"items":[dict(row) for row in rows]}
+
+
 @app.post("/api/bookings")
 def create_booking(payload: BookingCreate, authorization: Optional[str] = Header(default=None)):
     user = auth_user(authorization)
@@ -283,6 +307,7 @@ def booking_rows(conn, where, params):
                b.destination_address AS destination_text,
                b.destination_latitude AS destination_lat,
                b.destination_longitude AS destination_lon,
+               dl.latitude AS driver_lat, dl.longitude AS driver_lon,
                b.vehicle_type, b.payment_method,
                CASE WHEN b.status='requested' THEN 'searching' ELSE b.status END AS status,
                EXTRACT(EPOCH FROM b.created_at)::BIGINT AS created_at,
@@ -292,6 +317,7 @@ def booking_rows(conn, where, params):
         JOIN public.users p ON p.id=b.passenger_id
         LEFT JOIN public.drivers d ON d.id=b.driver_id
         LEFT JOIN public.users duser ON duser.id=d.user_id
+        LEFT JOIN public.driver_locations dl ON dl.driver_id=d.id AND dl.is_online=TRUE AND dl.updated_at > NOW() - INTERVAL '2 minutes'
         WHERE {where}
         ORDER BY b.created_at DESC LIMIT 50
     """, params).fetchall()
