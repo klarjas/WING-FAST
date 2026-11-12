@@ -538,3 +538,76 @@ select:focus,input:focus{outline:none;border-color:rgba(53,224,161,.55)!importan
   .bottom-nav-item{font-size:10px}
   .bottom-nav-item .nav-icon,.nav-language-item .nav-icon{width:22px;height:22px}
 }
+
+
+/* WING FAST — full-viewport app background, no outer black frame */
+html,body{
+  width:100%;
+  min-width:320px;
+  min-height:100%;
+  margin:0!important;
+  background:
+    radial-gradient(ellipse at 50% -8%,rgba(38,221,157,.16),transparent 42%),
+    radial-gradient(ellipse at 100% 48%,rgba(115,205,115,.07),transparent 34%),
+    #070A0D!important;
+  background-attachment:fixed;
+}
+body{
+  min-height:100vh;
+  min-height:100dvh;
+}
+.app-shell{
+  width:100%;
+  max-width:none!important;
+  min-height:100vh;
+  min-height:100dvh;
+  height:auto;
+  margin:0!important;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:calc(116px + env(safe-area-inset-bottom,0px));
+  border:0!important;
+  border-radius:0!important;
+  background:
+    radial-gradient(ellipse at 50% 0%,rgba(38,221,157,.105),transparent 36%),
+    linear-gradient(180deg,#0D1718 0%,#091113 54%,#070A0D 100%)!important;
+  box-shadow:none!important;
+  overflow-x:hidden;
+}
+.app-shell:before{
+  top:0;
+  left:0;
+  right:0;
+  width:100%;
+  height:320px;
+  background:radial-gradient(ellipse at 50% 0%,rgba(53,224,161,.12),transparent 72%);
+}
+main{
+  width:100%;
+  max-width:620px;
+  margin:0 auto;
+}
+.topbar{
+  width:100%;
+  max-width:620px;
+  margin:0 auto;
+}
+#appContent{
+  width:100%;
+  max-width:620px;
+  margin:0 auto;
+}
+footer{
+  width:100%;
+  max-width:620px;
+  margin:0 auto;
+}
+@media(min-width:601px){
+  body{display:block!important;min-height:100vh}
+  .app-shell{
+    min-height:100vh;
+    min-height:100dvh;
+    height:auto!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+}
