@@ -187,3 +187,11 @@ footer{border-color:#ffffff12;color:#646b76}
  .location-picker-actions{flex-direction:row;align-items:center}
  .location-picker-actions .muted{text-align:right;min-width:0;overflow-wrap:anywhere}
 }
+
+
+/* Real vehicle photography cards — five categories */
+.vehicle-options{grid-template-columns:repeat(5,minmax(0,1fr))}
+.vehicle-option{overflow:hidden;padding:7px 4px 9px;min-height:104px}
+.vehicle-option img{display:block;width:100%;height:55px;object-fit:contain;mix-blend-mode:screen;border-radius:8px}
+.vehicle-option span{font-size:10px}
+@media(max-width:390px){.vehicle-options{grid-template-columns:repeat(3,minmax(0,1fr))}.vehicle-option{min-height:94px}.vehicle-option img{height:51px}}
