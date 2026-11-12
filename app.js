@@ -163,13 +163,65 @@
     catch (e) { alert(e.message); }
   }
   let promotionObjectUrl = null;
+  // Persist promotion image blobs on this device so refreshes do not download them again.
+  const promotionBlobMemory = new Map();
+  let promotionDbPromise;
+  function openPromotionCacheDb() {
+    if (!("indexedDB" in window)) return Promise.resolve(null);
+    if (!promotionDbPromise) promotionDbPromise = new Promise((resolve) => {
+      const request = indexedDB.open("wing-fast-device-cache", 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains("promotion-images")) db.createObjectStore("promotion-images");
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve(null);
+      request.onblocked = () => resolve(null);
+    });
+    return promotionDbPromise;
+  }
+  async function getCachedPromotionBlob(mediaId) {
+    if (promotionBlobMemory.has(String(mediaId))) return promotionBlobMemory.get(String(mediaId));
+    const db = await openPromotionCacheDb();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      try {
+        const request = db.transaction("promotion-images", "readonly").objectStore("promotion-images").get(String(mediaId));
+        request.onsuccess = () => {
+          const blob = request.result || null;
+          if (blob) promotionBlobMemory.set(String(mediaId), blob);
+          resolve(blob);
+        };
+        request.onerror = () => resolve(null);
+      } catch (_) { resolve(null); }
+    });
+  }
+  async function saveCachedPromotionBlob(mediaId, blob) {
+    promotionBlobMemory.set(String(mediaId), blob);
+    const db = await openPromotionCacheDb();
+    if (!db) return;
+    try {
+      await new Promise((resolve) => {
+        const tx = db.transaction("promotion-images", "readwrite");
+        tx.objectStore("promotion-images").put(blob, String(mediaId));
+        tx.oncomplete = resolve;
+        tx.onerror = resolve;
+        tx.onabort = resolve;
+      });
+    } catch (_) {}
+  }
   async function loadPromotionImage(mediaId, targetId) {
     const target = $(targetId);
     if (!target) return;
     try {
-      const response = await fetch("/api/media/" + encodeURIComponent(mediaId), {headers: authHeaders()});
-      if (!response.ok) throw new Error("Image unavailable");
-      const url = URL.createObjectURL(await response.blob());
+      let blob = await getCachedPromotionBlob(mediaId);
+      if (!blob) {
+        const response = await fetch("/api/media/" + encodeURIComponent(mediaId), {headers: authHeaders()});
+        if (!response.ok) throw new Error("Image unavailable");
+        blob = await response.blob();
+        await saveCachedPromotionBlob(mediaId, blob);
+      }
+      const url = URL.createObjectURL(blob);
       if (targetId === "promotionImage") {
         if (promotionObjectUrl) URL.revokeObjectURL(promotionObjectUrl);
         promotionObjectUrl = url;
