@@ -862,3 +862,22 @@ footer{color:#64748B!important;border-color:#DCE2E9!important}
 .bottom-nav .language-choice.active{background:#16845C!important;color:#fff!important}
 .app-shell{padding-bottom:calc(112px + env(safe-area-inset-bottom))!important}
 @media(max-width:360px){.bottom-nav{width:calc(100% - 18px)!important;padding-left:5px!important;padding-right:5px!important;gap:2px!important}.bottom-nav .bottom-nav-item span,.bottom-nav .language-toggle span{font-size:9px!important}.bottom-nav .bottom-nav-item .nav-icon,.bottom-nav .language-toggle .nav-icon{width:19px!important;height:19px!important}}
+
+
+/* WING FAST — four-item navigation after removing Driver shortcut */
+.bottom-nav{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+}
+
+/* Sequential top-to-bottom content reveal */
+@keyframes wingTopDownReveal{
+  from{opacity:0;transform:translate3d(0,-12px,0);filter:blur(2px)}
+  to{opacity:1;transform:translate3d(0,0,0);filter:blur(0)}
+}
+.view > .top-down-reveal{
+  animation:wingTopDownReveal .42s cubic-bezier(.2,.72,.25,1) both!important;
+  will-change:opacity,transform;
+}
+@media(prefers-reduced-motion:reduce){
+  .view > .top-down-reveal{animation:none!important;opacity:1!important;transform:none!important;filter:none!important}
+}
