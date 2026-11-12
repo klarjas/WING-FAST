@@ -11,17 +11,16 @@
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">W</span><span>WING <b>FAST</b><small>MOVE WITH CONFIDENCE</small></span></div>
+      <div class="brand"><span class="brand-mark">W</span><span>WING <b>FAST</b></span></div>
       <div class="top-actions"><select id="languageSelect" aria-label="Language" style="width:auto;height:36px;padding:0 8px;font-size:11px"><option value="km">🇰🇭 ខ្មែរ</option><option value="zh">🇨🇳 中文</option><option value="en">🇬🇧 English</option></select><button id="refreshBtn" class="icon-btn" aria-label="Refresh">↻</button></div>
     </header>
     <main>
       <section id="loading" class="panel center"><div class="loader"></div><p>Connecting to WING FAST…</p></section>
       <section id="errorPanel" class="panel hidden"><h2>Connection problem</h2><p id="errorText"></p><button class="btn primary" id="retryBtn">Try again</button></section>
       <section id="appContent" class="hidden">
-        <div class="welcome"><div><span class="eyebrow">YOUR RIDE, YOUR WAY</span><h1 id="greeting">Hello</h1><p id="roleLabel">Passenger account</p></div><span class="status-pill"><i></i> ONLINE</span></div>
         <nav class="bottom-nav" id="tabs" aria-label="Main navigation">
-          <button class="bottom-nav-item tab active" data-view="ride" type="button"><span class="nav-icon" aria-hidden="true">⌖</span><span>កក់ដំណើរ</span></button>
-          <button class="bottom-nav-item tab" data-view="activity" type="button"><span class="nav-icon" aria-hidden="true">◷</span><span>ប្រវត្តិ</span></button>
+          <button class="bottom-nav-item tab active" data-view="ride" type="button"><span class="nav-icon" aria-hidden="true">⌖</span><span>Ride</span></button>
+          <button class="bottom-nav-item tab" data-view="activity" type="button"><span class="nav-icon" aria-hidden="true">◷</span><span>Activity</span></button>
           <button class="bottom-nav-item tab" data-view="profile" type="button"><span class="nav-icon" aria-hidden="true">◎</span><span>Profile</span></button>
         </nav>
 
