@@ -26,12 +26,69 @@ app = FastAPI(title="WING FAST API", version="1.0.0")
 app.mount("/static", StaticFiles(directory=str(APP_DIR)), name="static")
 
 
+SUPABASE_DB_URL = os.getenv("SUPABASE_DB_URL", "").strip()
+
+
+class CompatRow(dict):
+    """Dictionary row that also supports SQLite-style numeric indexing."""
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return list(self.values())[key]
+        return super().__getitem__(key)
+
+
+class CompatCursor:
+    def __init__(self, cursor):
+        self.cursor = cursor
+        self.rowcount = cursor.rowcount
+
+    def fetchone(self):
+        row = self.cursor.fetchone()
+        return CompatRow(row) if row is not None else None
+
+    def fetchall(self):
+        return [CompatRow(row) for row in self.cursor.fetchall()]
+
+
+class PostgresCompatConnection:
+    """Small adapter so existing parameterized SQL works with Supabase Postgres."""
+    def __init__(self, connection):
+        self.connection = connection
+
+    def execute(self, sql, params=()):
+        if sql.lstrip().upper().startswith("PRAGMA"):
+            return CompatCursor(self.connection.execute("SELECT 1 AS ok"))
+        return CompatCursor(self.connection.execute(sql.replace("?", "%s"), params))
+
+    def executescript(self, script):
+        for statement in script.split(";"):
+            statement = statement.strip()
+            if statement:
+                self.connection.execute(statement)
+
+    def commit(self):
+        self.connection.commit()
+
+    def rollback(self):
+        self.connection.rollback()
+
+    def close(self):
+        self.connection.close()
+
+
 @contextmanager
 def db():
-    conn = sqlite3.connect(DB_PATH, timeout=20)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA journal_mode = WAL")
+    if SUPABASE_DB_URL:
+        import psycopg
+        from psycopg.rows import dict_row
+        raw = psycopg.connect(SUPABASE_DB_URL, row_factory=dict_row, connect_timeout=15)
+        conn = PostgresCompatConnection(raw)
+    else:
+        raw = sqlite3.connect(DB_PATH, timeout=20)
+        raw.row_factory = sqlite3.Row
+        raw.execute("PRAGMA foreign_keys = ON")
+        raw.execute("PRAGMA journal_mode = WAL")
+        conn = raw
     try:
         yield conn
         conn.commit()
@@ -43,7 +100,8 @@ def db():
 
 
 def init_db():
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
+    if not SUPABASE_DB_URL:
+        Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     with db() as conn:
         conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (
