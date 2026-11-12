@@ -148,9 +148,9 @@
       $("adminStats").innerHTML = [["USERS",stats.users],["PENDING DRIVERS",stats.pending_drivers],["ACTIVE DRIVERS",stats.active_drivers],["ACTIVE RIDES",stats.active_bookings]]
         .map(([label,value]) => '<div class="stat"><b>' + value + '</b><span>' + label + '</span></div>').join("");
       $("adminDrivers").innerHTML = drivers.items.length ? drivers.items.map((d) =>
-        '<article class="admin-card"><strong>' + escapeHtml(d.first_name || d.telegram_id) + ' · ' + escapeHtml(d.plate_number) + '</strong><small>' + escapeHtml(d.vehicle_model) + ' / ' + escapeHtml(d.phone) + ' · ' + escapeHtml(d.status) + '</small>' +
-        '<div class="card-actions">' + (d.status === "pending" ? '<button class="mini-btn good" data-approve="' + escapeHtml(d.telegram_id) + '">APPROVE</button><button class="mini-btn" data-reject="' + escapeHtml(d.telegram_id) + '">REJECT</button>' : '') +
-        (d.status !== "blocked" ? '<button class="mini-btn" data-block="' + escapeHtml(d.telegram_id) + '">BLOCK DRIVER</button>' : '<span class="muted">BLOCKED</span>') + '</div></article>'
+        '<article class="admin-card"><strong>' + escapeHtml(d.first_name || d.driver_id) + ' · ' + escapeHtml(d.plate_number) + '</strong><small>' + escapeHtml(d.vehicle_model) + ' / ' + escapeHtml(d.phone) + ' · ' + escapeHtml(d.status) + '</small>' +
+        '<div class="card-actions">' + (d.status === "pending" ? '<button class="mini-btn good" data-approve="' + escapeHtml(d.driver_id) + '">APPROVE</button><button class="mini-btn" data-reject="' + escapeHtml(d.driver_id) + '">REJECT</button>' : '') +
+        (d.status !== "blocked" ? '<button class="mini-btn" data-block="' + escapeHtml(d.driver_id) + '">BLOCK DRIVER</button>' : '<span class="muted">BLOCKED</span>') + '</div></article>'
       ).join("") : '<div class="empty-state">No driver applications yet.</div>';
       $("adminBookings").innerHTML = bookings.items.slice(0,25).map((b) =>
         '<article class="ride-card"><strong>' + escapeHtml(b.destination_text) + '</strong><small>' + escapeHtml(b.status) + ' · Passenger ' + escapeHtml(b.passenger_id) + '</small></article>'
