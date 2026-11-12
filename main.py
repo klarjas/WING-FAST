@@ -267,6 +267,10 @@ class DriverApplication(BaseModel):
         return value.strip()
 
 
+class PromotionSave(BaseModel):
+    media_id: str = Field(min_length=36, max_length=36)
+
+
 class BookingCreate(BaseModel):
     pickup_lat: float = Field(ge=-90, le=90)
     pickup_lon: float = Field(ge=-180, le=180)
@@ -544,6 +548,56 @@ def driver_booking_status(booking_id: str, payload: BookingStatusUpdate,
         conn.execute("UPDATE public.bookings SET status=%s,updated_at=NOW() WHERE id=%s",
                      (payload.status, booking_id))
     return {"ok": True, "status": payload.status}
+
+
+@app.get("/api/promotions/active")
+def active_promotion(authorization: Optional[str] = Header(default=None)):
+    auth_user(authorization)
+    with db() as conn:
+        row = conn.execute("""
+            SELECT p.id, p.media_id, m.file_name, m.mime_type
+            FROM public.promotion_banners p
+            JOIN public.media_files m ON m.id=p.media_id
+            WHERE p.is_active=TRUE
+            ORDER BY p.updated_at DESC LIMIT 1
+        """).fetchone()
+    return {"promotion": dict(row) if row else None}
+
+
+@app.post("/api/admin/promotions")
+def save_promotion(payload: PromotionSave, authorization: Optional[str] = Header(default=None)):
+    user = auth_user(authorization)
+    require_admin(user)
+    with db() as conn:
+        media = conn.execute("""
+            SELECT id FROM public.media_files
+            WHERE id=%s AND category='other' AND mime_type IN ('image/jpeg','image/png','image/webp')
+        """, (payload.media_id,)).fetchone()
+        if not media:
+            raise HTTPException(404, "Promotion image not found")
+        conn.execute("UPDATE public.promotion_banners SET is_active=FALSE, updated_at=NOW() WHERE is_active=TRUE")
+        row = conn.execute("""
+            INSERT INTO public.promotion_banners (media_id, is_active, updated_at)
+            VALUES (%s, TRUE, NOW())
+            RETURNING id, media_id, is_active, updated_at
+        """, (payload.media_id,)).fetchone()
+    return {"ok": True, "promotion": dict(row)}
+
+
+@app.delete("/api/admin/promotions/{promotion_id}")
+def delete_promotion(promotion_id: str, authorization: Optional[str] = Header(default=None)):
+    user = auth_user(authorization)
+    require_admin(user)
+    with db() as conn:
+        row = conn.execute("""
+            UPDATE public.promotion_banners
+            SET is_active=FALSE, updated_at=NOW()
+            WHERE id=%s AND is_active=TRUE
+            RETURNING id
+        """, (promotion_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "Active promotion not found")
+    return {"ok": True}
 
 
 @app.get("/api/admin/overview")
