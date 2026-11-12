@@ -189,9 +189,15 @@ footer{border-color:#ffffff12;color:#646b76}
 }
 
 
-/* Real vehicle photography cards — five categories */
-.vehicle-options{grid-template-columns:repeat(5,minmax(0,1fr))}
-.vehicle-option{overflow:hidden;padding:7px 4px 9px;min-height:104px}
-.vehicle-option img{display:block;width:100%;height:55px;object-fit:contain;mix-blend-mode:screen;border-radius:8px}
-.vehicle-option span{font-size:10px}
-@media(max-width:390px){.vehicle-options{grid-template-columns:repeat(3,minmax(0,1fr))}.vehicle-option{min-height:94px}.vehicle-option img{height:51px}}
+/* WING FAST — larger vehicle photo cards */
+.vehicle-options{grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.vehicle-option{min-height:158px;padding:8px 7px 11px;gap:9px;justify-content:space-between}
+.vehicle-option img{display:block;width:100%;height:112px;object-fit:contain;object-position:center;background:#fff;border-radius:11px;mix-blend-mode:normal}
+.vehicle-option span{font-size:11px;line-height:1.3;min-height:16px}
+.vehicle-option.active img{outline:2px solid #f5c84b;outline-offset:-2px}
+@media(max-width:600px){
+  .vehicle-options{display:flex;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;padding:2px 1px 9px}
+  .vehicle-option{flex:0 0 128px;min-height:158px;scroll-snap-align:start}
+  .vehicle-option img{height:108px}
+}
+@media(max-width:390px){.vehicle-option{flex-basis:116px;min-height:150px}.vehicle-option img{height:100px}.vehicle-option span{font-size:10px}}
