@@ -2,93 +2,35 @@ import hashlib
 import hmac
 import json
 import os
-import secrets
-import sqlite3
+import re
 import time
+import uuid
 from contextlib import contextmanager
-from pathlib import Path
 from typing import Optional
 from urllib.parse import parse_qsl
 
-from fastapi import FastAPI, Header, HTTPException, Request
+import psycopg
+from psycopg.rows import dict_row
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
-APP_DIR = Path(__file__).resolve().parent
-DB_PATH = os.getenv("DATABASE_PATH", str(APP_DIR / "wingfast.db"))
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
+SUPABASE_DB_URL = os.getenv("SUPABASE_DB_URL", "").strip()
 ADMIN_IDS = {x.strip() for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()}
-DEV_MODE = os.getenv("DEV_MODE", "false").lower() == "true"
 INIT_DATA_MAX_AGE = int(os.getenv("INIT_DATA_MAX_AGE", "86400"))
 
-app = FastAPI(title="WING FAST API", version="1.0.0")
-app.mount("/static", StaticFiles(directory=str(APP_DIR)), name="static")
-
-
-SUPABASE_DB_URL = os.getenv("SUPABASE_DB_URL", "").strip()
-
-
-class CompatRow(dict):
-    """Dictionary row that also supports SQLite-style numeric indexing."""
-    def __getitem__(self, key):
-        if isinstance(key, int):
-            return list(self.values())[key]
-        return super().__getitem__(key)
-
-
-class CompatCursor:
-    def __init__(self, cursor):
-        self.cursor = cursor
-        self.rowcount = cursor.rowcount
-
-    def fetchone(self):
-        row = self.cursor.fetchone()
-        return CompatRow(row) if row is not None else None
-
-    def fetchall(self):
-        return [CompatRow(row) for row in self.cursor.fetchall()]
-
-
-class PostgresCompatConnection:
-    """Small adapter so existing parameterized SQL works with Supabase Postgres."""
-    def __init__(self, connection):
-        self.connection = connection
-
-    def execute(self, sql, params=()):
-        if sql.lstrip().upper().startswith("PRAGMA"):
-            return CompatCursor(self.connection.execute("SELECT 1 AS ok"))
-        return CompatCursor(self.connection.execute(sql.replace("?", "%s"), params))
-
-    def executescript(self, script):
-        for statement in script.split(";"):
-            statement = statement.strip()
-            if statement:
-                self.connection.execute(statement)
-
-    def commit(self):
-        self.connection.commit()
-
-    def rollback(self):
-        self.connection.rollback()
-
-    def close(self):
-        self.connection.close()
+app = FastAPI(title="WING FAST API", version="2.0.0")
+app.mount("/static", StaticFiles(directory=APP_DIR), name="static")
 
 
 @contextmanager
 def db():
-    if SUPABASE_DB_URL:
-        import psycopg
-        from psycopg.rows import dict_row
-        raw = psycopg.connect(SUPABASE_DB_URL, row_factory=dict_row, connect_timeout=15)
-        conn = PostgresCompatConnection(raw)
-    else:
-        raw = sqlite3.connect(DB_PATH, timeout=20)
-        raw.row_factory = sqlite3.Row
-        raw.execute("PRAGMA foreign_keys = ON")
-        raw.execute("PRAGMA journal_mode = WAL")
-        conn = raw
+    if not SUPABASE_DB_URL:
+        raise HTTPException(503, "SUPABASE_DB_URL is not configured on the server")
+    conn = psycopg.connect(SUPABASE_DB_URL, row_factory=dict_row, connect_timeout=15)
     try:
         yield conn
         conn.commit()
@@ -99,60 +41,6 @@ def db():
         conn.close()
 
 
-def init_db():
-    if not SUPABASE_DB_URL:
-        Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    with db() as conn:
-        conn.executescript("""
-        CREATE TABLE IF NOT EXISTS users (
-            telegram_id TEXT PRIMARY KEY,
-            first_name TEXT NOT NULL DEFAULT '',
-            username TEXT NOT NULL DEFAULT '',
-            role TEXT NOT NULL DEFAULT 'passenger',
-            blocked INTEGER NOT NULL DEFAULT 0,
-            created_at INTEGER NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS drivers (
-            telegram_id TEXT PRIMARY KEY REFERENCES users(telegram_id),
-            phone TEXT NOT NULL,
-            vehicle_type TEXT NOT NULL,
-            vehicle_model TEXT NOT NULL,
-            plate_number TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'pending',
-            admin_note TEXT NOT NULL DEFAULT '',
-            updated_at INTEGER NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS bookings (
-            id TEXT PRIMARY KEY,
-            passenger_id TEXT NOT NULL REFERENCES users(telegram_id),
-            driver_id TEXT REFERENCES users(telegram_id),
-            pickup_lat REAL NOT NULL,
-            pickup_lon REAL NOT NULL,
-            pickup_text TEXT NOT NULL DEFAULT '',
-            destination_text TEXT NOT NULL,
-            destination_lat REAL,
-            destination_lon REAL,
-            vehicle_type TEXT NOT NULL DEFAULT 'all',
-            payment_method TEXT NOT NULL DEFAULT 'cash',
-            fare_note TEXT NOT NULL DEFAULT '',
-            status TEXT NOT NULL DEFAULT 'searching',
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS driver_locations (
-            telegram_id TEXT PRIMARY KEY REFERENCES users(telegram_id),
-            lat REAL NOT NULL,
-            lon REAL NOT NULL,
-            accuracy REAL,
-            updated_at INTEGER NOT NULL
-        );
-        CREATE INDEX IF NOT EXISTS idx_bookings_passenger ON bookings(passenger_id, created_at);
-        CREATE INDEX IF NOT EXISTS idx_bookings_driver ON bookings(driver_id, status);
-        CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status, created_at);
-        """)
-init_db()
-
-
 def verify_telegram_init_data(init_data: str) -> dict:
     if not BOT_TOKEN:
         raise HTTPException(503, "Server is not configured: BOT_TOKEN is missing")
@@ -161,17 +49,17 @@ def verify_telegram_init_data(init_data: str) -> dict:
         received_hash = pairs.pop("hash", "")
         auth_date = int(pairs.get("auth_date", "0"))
         if not received_hash or not auth_date:
-            raise ValueError("Missing Telegram signature")
+            raise ValueError()
         if abs(int(time.time()) - auth_date) > INIT_DATA_MAX_AGE:
             raise HTTPException(401, "Telegram session expired. Reopen the Mini App.")
-        data_check = "\n".join(f"{k}={v}" for k, v in sorted(pairs.items()))
-        secret_key = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
-        expected = hmac.new(secret_key, data_check.encode(), hashlib.sha256).hexdigest()
+        check = "\n".join(f"{k}={v}" for k, v in sorted(pairs.items()))
+        secret = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
+        expected = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(expected, received_hash):
-            raise ValueError("Invalid Telegram signature")
+            raise ValueError()
         user = json.loads(pairs["user"])
         if not user.get("id"):
-            raise ValueError("Missing Telegram user ID")
+            raise ValueError()
         return user
     except HTTPException:
         raise
@@ -180,61 +68,60 @@ def verify_telegram_init_data(init_data: str) -> dict:
 
 
 def current_user(authorization: Optional[str]) -> dict:
-    if DEV_MODE and not BOT_TOKEN:
-        # Local-only test identity. Never enable DEV_MODE on a public deployment.
-        return {"id": 999000001, "first_name": "Local Tester", "username": "local_test"}
     if not authorization or not authorization.startswith("tma "):
         raise HTTPException(401, "Open WING FAST inside Telegram")
     return verify_telegram_init_data(authorization[4:].strip())
 
 
-def user_id(user: dict) -> str:
-    return str(user["id"])
+def ensure_user(conn, tg: dict) -> dict:
+    telegram_id = int(tg["id"])
+    full_name = (str(tg.get("first_name", "")) + " " + str(tg.get("last_name", ""))).strip()[:160]
+    username = str(tg.get("username", ""))[:80] or None
+    role = "admin" if str(telegram_id) in ADMIN_IDS else "passenger"
+    conn.execute("""
+        INSERT INTO public.users (telegram_user_id, full_name, username, role)
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (telegram_user_id) DO UPDATE SET
+            full_name=EXCLUDED.full_name,
+            username=EXCLUDED.username,
+            role=CASE WHEN public.users.role='admin' THEN 'admin'
+                      WHEN EXCLUDED.role='admin' THEN 'admin'
+                      ELSE public.users.role END,
+            updated_at=NOW()
+    """, (telegram_id, full_name, username, role))
+    row = conn.execute("""
+        SELECT id, telegram_user_id, full_name, username, phone, role, account_status,
+               EXTRACT(EPOCH FROM created_at)::BIGINT AS created_at
+        FROM public.users WHERE telegram_user_id=%s
+    """, (telegram_id,)).fetchone()
+    if row["account_status"] != "active":
+        raise HTTPException(403, "Your account is suspended. Contact WING FAST support.")
+    return row
 
 
-def ensure_user(conn, tg_user: dict):
-    uid = user_id(tg_user)
-    row = conn.execute("SELECT * FROM users WHERE telegram_id=?", (uid,)).fetchone()
-    first = str(tg_user.get("first_name", ""))[:80]
-    username = str(tg_user.get("username", ""))[:80]
-    if row is None:
-        role = "admin" if uid in ADMIN_IDS else "passenger"
-        conn.execute(
-            "INSERT INTO users(telegram_id,first_name,username,role,created_at) VALUES(?,?,?,?,?)",
-            (uid, first, username, role, int(time.time()))
-        )
-    else:
-        # Admin privileges are granted only by the server-side ADMIN_IDS allowlist.
-        role = "admin" if uid in ADMIN_IDS else ("passenger" if row["role"] == "admin" else row["role"])
-        conn.execute(
-            "UPDATE users SET first_name=?, username=?, role=? WHERE telegram_id=?",
-            (first, username, role, uid)
-        )
-    row = conn.execute("SELECT * FROM users WHERE telegram_id=?", (uid,)).fetchone()
-    if row["blocked"]:
-        raise HTTPException(403, "Your account is blocked. Contact WING FAST support.")
-    return dict(row)
-
-
-def auth_user(authorization: Optional[str]):
+def auth_user(authorization):
     tg = current_user(authorization)
     with db() as conn:
         return ensure_user(conn, tg)
 
 
-def require_admin(user: dict):
+def require_admin(user):
     if user["role"] != "admin":
         raise HTTPException(403, "Admin access required")
 
 
-def require_driver(conn, uid: str):
-    row = conn.execute("SELECT * FROM drivers WHERE telegram_id=?", (uid,)).fetchone()
-    if not row or row["status"] != "approved":
+def get_driver(conn, user_uuid):
+    return conn.execute("SELECT * FROM public.drivers WHERE user_id=%s", (user_uuid,)).fetchone()
+
+
+def require_driver(conn, user_uuid):
+    driver = get_driver(conn, user_uuid)
+    if not driver or driver["status"] != "approved":
         raise HTTPException(403, "Driver account is not approved")
-    return row
+    return driver
 
 
-def clean_text(value: str, maximum: int, label: str) -> str:
+def clean(value, maximum, label):
     value = value.strip()
     if not value or len(value) > maximum:
         raise HTTPException(422, f"{label} is required and must be under {maximum} characters")
@@ -243,13 +130,13 @@ def clean_text(value: str, maximum: int, label: str) -> str:
 
 class DriverApplication(BaseModel):
     phone: str = Field(min_length=6, max_length=30)
-    vehicle_type: str = Field(min_length=2, max_length=30)
-    vehicle_model: str = Field(min_length=2, max_length=80)
+    vehicle_type: str = Field(pattern="^(car|suv|tuk_tuk|motorbike)$")
+    vehicle_model: str = Field(min_length=2, max_length=100)
     plate_number: str = Field(min_length=2, max_length=30)
 
-    @field_validator("phone", "vehicle_type", "vehicle_model", "plate_number")
+    @field_validator("phone", "vehicle_model", "plate_number")
     @classmethod
-    def strip_fields(cls, value):
+    def trim(cls, value):
         return value.strip()
 
 
@@ -260,7 +147,7 @@ class BookingCreate(BaseModel):
     destination_text: str = Field(min_length=2, max_length=180)
     destination_lat: Optional[float] = Field(default=None, ge=-90, le=90)
     destination_lon: Optional[float] = Field(default=None, ge=-180, le=180)
-    vehicle_type: str = Field(default="all", max_length=30)
+    vehicle_type: str = Field(default="all", pattern="^(all|car|suv|tuk_tuk|motorbike)$")
     payment_method: str = Field(default="cash", pattern="^(cash|digital)$")
 
 
@@ -271,140 +158,184 @@ class LocationUpdate(BaseModel):
 
 
 class BookingStatusUpdate(BaseModel):
-    status: str = Field(pattern="^(accepted|arrived|in_progress|completed|cancelled)$")
+    status: str = Field(pattern="^(arrived|in_progress|completed|cancelled)$")
 
 
 @app.get("/")
 def home():
-    return FileResponse(APP_DIR / "index.html")
+    return FileResponse(os.path.join(APP_DIR, "index.html"))
 
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "app": "WING FAST", "version": app.version}
+    try:
+        with db() as conn:
+            conn.execute("SELECT 1").fetchone()
+        return {"ok": True, "app": "WING FAST", "version": app.version, "database": "connected"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(503, f"Database connection failed: {type(exc).__name__}")
 
 
 @app.get("/api/me")
 def me(authorization: Optional[str] = Header(default=None)):
     user = auth_user(authorization)
     with db() as conn:
-        driver = conn.execute("SELECT status,vehicle_type,vehicle_model,plate_number FROM drivers WHERE telegram_id=?",
-                              (user["telegram_id"],)).fetchone()
-    return {"user": user, "driver": dict(driver) if driver else None}
+        driver = get_driver(conn, user["id"])
+        vehicle = None
+        if driver:
+            vehicle = conn.execute("""
+                SELECT vehicle_type, model AS vehicle_model, plate_number
+                FROM public.vehicles WHERE driver_id=%s
+                ORDER BY created_at DESC LIMIT 1
+            """, (driver["id"],)).fetchone()
+    ui_user = dict(user)
+    ui_user["telegram_id"] = str(user["telegram_user_id"])
+    ui_user["first_name"] = user["full_name"]
+    ui_user["blocked"] = False
+    ui_driver = None
+    if driver:
+        ui_driver = {"id": str(driver["id"]), "status": driver["status"]}
+        if vehicle:
+            ui_driver.update(dict(vehicle))
+    return {"user": ui_user, "driver": ui_driver}
 
 
 @app.post("/api/driver/apply")
 def driver_apply(payload: DriverApplication, authorization: Optional[str] = Header(default=None)):
     user = auth_user(authorization)
-    uid = user["telegram_id"]
+    plate = clean(payload.plate_number, 30, "License plate")
+    normalized = re.sub(r"[^A-Z0-9]", "", plate.upper())
     with db() as conn:
-        blocked = conn.execute(
-            "SELECT 1 FROM drivers WHERE lower(plate_number)=lower(?) AND telegram_id<>? AND status='blocked'",
-            (payload.plate_number, uid)
-        ).fetchone()
-        if blocked:
-            raise HTTPException(403, "This vehicle plate is blocked")
-        duplicate = conn.execute(
-            "SELECT 1 FROM drivers WHERE lower(plate_number)=lower(?) AND telegram_id<>? AND status IN ('pending','approved')",
-            (payload.plate_number, uid)
-        ).fetchone()
-        if duplicate:
-            raise HTTPException(409, "This license plate is already registered")
+        existing = conn.execute("""
+            SELECT id FROM public.vehicles
+            WHERE normalized_plate=%s AND status IN ('pending','approved','blocked')
+        """, (normalized,)).fetchone()
+        driver = get_driver(conn, user["id"])
+        if existing:
+            owner = conn.execute("SELECT driver_id FROM public.vehicles WHERE id=%s", (existing["id"],)).fetchone()
+            if not driver or str(owner["driver_id"]) != str(driver["id"]):
+                raise HTTPException(409, "This license plate is already registered or blocked")
+        conn.execute("UPDATE public.users SET phone=%s, updated_at=NOW() WHERE id=%s",
+                     (payload.phone, user["id"]))
+        if not driver:
+            driver = conn.execute("""
+                INSERT INTO public.drivers (user_id, status)
+                VALUES (%s, 'pending') RETURNING *
+            """, (user["id"],)).fetchone()
+        else:
+            conn.execute("""
+                UPDATE public.drivers SET status='pending', rejection_reason=NULL,
+                    online_status=FALSE, updated_at=NOW() WHERE id=%s
+            """, (driver["id"],))
         conn.execute("""
-            INSERT INTO drivers(telegram_id,phone,vehicle_type,vehicle_model,plate_number,status,updated_at)
-            VALUES(?,?,?,?,?,'pending',?)
-            ON CONFLICT(telegram_id) DO UPDATE SET
-            phone=excluded.phone, vehicle_type=excluded.vehicle_type,
-            vehicle_model=excluded.vehicle_model, plate_number=excluded.plate_number,
-            status='pending', admin_note='', updated_at=excluded.updated_at
-        """, (uid, payload.phone, payload.vehicle_type, payload.vehicle_model,
-              payload.plate_number.upper(), int(time.time())))
-        conn.execute("UPDATE users SET role='driver_pending' WHERE telegram_id=?", (uid,))
+            INSERT INTO public.vehicles
+                (driver_id, vehicle_type, model, plate_number, normalized_plate, status)
+            VALUES (%s,%s,%s,%s,%s,'pending')
+        """, (driver["id"], payload.vehicle_type, payload.vehicle_model, plate, normalized))
     return {"ok": True, "status": "pending", "message": "Application submitted for admin review"}
 
 
 @app.post("/api/driver/location")
 def driver_location(payload: LocationUpdate, authorization: Optional[str] = Header(default=None)):
     user = auth_user(authorization)
-    uid = user["telegram_id"]
     with db() as conn:
-        require_driver(conn, uid)
-        now = int(time.time())
+        driver = require_driver(conn, user["id"])
         conn.execute("""
-            INSERT INTO driver_locations(telegram_id,lat,lon,accuracy,updated_at)
-            VALUES(?,?,?,?,?)
-            ON CONFLICT(telegram_id) DO UPDATE SET lat=excluded.lat,lon=excluded.lon,
-            accuracy=excluded.accuracy,updated_at=excluded.updated_at
-        """, (uid, payload.lat, payload.lon, payload.accuracy, now))
-    return {"ok": True, "updated_at": now}
+            INSERT INTO public.driver_locations
+                (driver_id, latitude, longitude, accuracy, is_online, updated_at)
+            VALUES (%s,%s,%s,%s,TRUE,NOW())
+            ON CONFLICT (driver_id) DO UPDATE SET
+                latitude=EXCLUDED.latitude, longitude=EXCLUDED.longitude,
+                accuracy=EXCLUDED.accuracy, is_online=TRUE, updated_at=NOW()
+        """, (driver["id"], payload.lat, payload.lon, payload.accuracy))
+        conn.execute("UPDATE public.drivers SET online_status=TRUE, updated_at=NOW() WHERE id=%s",
+                     (driver["id"],))
+    return {"ok": True}
 
 
 @app.post("/api/bookings")
 def create_booking(payload: BookingCreate, authorization: Optional[str] = Header(default=None)):
     user = auth_user(authorization)
-    if payload.destination_lat is None and payload.destination_lon is not None:
+    if (payload.destination_lat is None) != (payload.destination_lon is None):
         raise HTTPException(422, "Destination coordinates must include both latitude and longitude")
-    if payload.destination_lon is None and payload.destination_lat is not None:
-        raise HTTPException(422, "Destination coordinates must include both latitude and longitude")
-    booking_id = secrets.token_urlsafe(9)
-    now = int(time.time())
     with db() as conn:
-        conn.execute("""
-            INSERT INTO bookings(id,passenger_id,pickup_lat,pickup_lon,pickup_text,destination_text,
-            destination_lat,destination_lon,vehicle_type,payment_method,created_at,updated_at)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
-        """, (booking_id, user["telegram_id"], payload.pickup_lat, payload.pickup_lon,
-              payload.pickup_text.strip(), clean_text(payload.destination_text, 180, "Destination"),
-              payload.destination_lat, payload.destination_lon, payload.vehicle_type,
-              payload.payment_method, now, now))
-    return {"ok": True, "booking_id": booking_id, "status": "searching"}
+        row = conn.execute("""
+            INSERT INTO public.bookings (
+                passenger_id, pickup_latitude, pickup_longitude, pickup_address,
+                destination_latitude, destination_longitude, destination_address,
+                vehicle_type, payment_method, status
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,'requested')
+            RETURNING id
+        """, (user["id"], payload.pickup_lat, payload.pickup_lon,
+              payload.pickup_text.strip(), payload.destination_lat, payload.destination_lon,
+              clean(payload.destination_text, 180, "Destination"),
+              payload.vehicle_type, payload.payment_method)).fetchone()
+    return {"ok": True, "booking_id": str(row["id"]), "status": "searching"}
+
+
+def booking_rows(conn, where, params):
+    return conn.execute(f"""
+        SELECT b.id, b.passenger_id, b.driver_id, b.vehicle_id,
+               b.pickup_latitude AS pickup_lat, b.pickup_longitude AS pickup_lon,
+               COALESCE(b.pickup_address,'') AS pickup_text,
+               b.destination_address AS destination_text,
+               b.destination_latitude AS destination_lat,
+               b.destination_longitude AS destination_lon,
+               b.vehicle_type, b.payment_method,
+               CASE WHEN b.status='requested' THEN 'searching' ELSE b.status END AS status,
+               EXTRACT(EPOCH FROM b.created_at)::BIGINT AS created_at,
+               EXTRACT(EPOCH FROM b.updated_at)::BIGINT AS updated_at,
+               p.full_name AS passenger_name, duser.full_name AS driver_name
+        FROM public.bookings b
+        JOIN public.users p ON p.id=b.passenger_id
+        LEFT JOIN public.drivers d ON d.id=b.driver_id
+        LEFT JOIN public.users duser ON duser.id=d.user_id
+        WHERE {where}
+        ORDER BY b.created_at DESC LIMIT 50
+    """, params).fetchall()
 
 
 @app.get("/api/bookings/mine")
 def my_bookings(authorization: Optional[str] = Header(default=None)):
     user = auth_user(authorization)
-    uid = user["telegram_id"]
     with db() as conn:
-        if user["role"] in ("driver", "driver_pending"):
-            rows = conn.execute("""
-                SELECT b.*,u.first_name AS passenger_name FROM bookings b
-                JOIN users u ON u.telegram_id=b.passenger_id
-                WHERE b.driver_id=? OR (b.status='searching' AND ?='driver')
-                ORDER BY b.created_at DESC LIMIT 50
-            """, (uid, user["role"])).fetchall()
+        driver = get_driver(conn, user["id"])
+        if driver and driver["status"] == "approved":
+            rows = booking_rows(conn, "(b.passenger_id=%s OR b.driver_id=%s)", (user["id"], driver["id"]))
         else:
-            rows = conn.execute("""
-                SELECT b.*,u.first_name AS driver_name FROM bookings b
-                LEFT JOIN users u ON u.telegram_id=b.driver_id
-                WHERE b.passenger_id=? ORDER BY b.created_at DESC LIMIT 50
-            """, (uid,)).fetchall()
-    return {"items": [dict(r) for r in rows]}
+            rows = booking_rows(conn, "b.passenger_id=%s", (user["id"],))
+    return {"items": [{**dict(r), "id": str(r["id"]), "passenger_id": str(r["passenger_id"]),
+                       "driver_id": str(r["driver_id"]) if r["driver_id"] else None} for r in rows]}
 
 
 @app.get("/api/driver/requests")
 def driver_requests(authorization: Optional[str] = Header(default=None)):
     user = auth_user(authorization)
     with db() as conn:
-        require_driver(conn, user["telegram_id"])
-        rows = conn.execute("""
-            SELECT b.*,u.first_name AS passenger_name FROM bookings b
-            JOIN users u ON u.telegram_id=b.passenger_id
-            WHERE b.status='searching' ORDER BY b.created_at DESC LIMIT 30
-        """).fetchall()
-    return {"items": [dict(r) for r in rows]}
+        driver = require_driver(conn, user["id"])
+        rows = booking_rows(conn, "b.status='requested' AND (b.vehicle_type='all' OR b.vehicle_type IN (SELECT v.vehicle_type FROM public.vehicles v WHERE v.driver_id=%s AND v.status='approved'))",
+                            (driver["id"],))
+    return {"items": [{**dict(r), "id": str(r["id"])} for r in rows]}
 
 
 @app.post("/api/driver/bookings/{booking_id}/accept")
 def accept_booking(booking_id: str, authorization: Optional[str] = Header(default=None)):
     user = auth_user(authorization)
-    uid = user["telegram_id"]
     with db() as conn:
-        require_driver(conn, uid)
-        cur = conn.execute("""
-            UPDATE bookings SET driver_id=?,status='accepted',updated_at=?
-            WHERE id=? AND status='searching' AND driver_id IS NULL
-        """, (uid, int(time.time()), booking_id))
-        if cur.rowcount != 1:
+        driver = require_driver(conn, user["id"])
+        vehicle = conn.execute("""
+            SELECT id FROM public.vehicles WHERE driver_id=%s AND status='approved'
+            ORDER BY created_at DESC LIMIT 1
+        """, (driver["id"],)).fetchone()
+        if not vehicle:
+            raise HTTPException(403, "No approved vehicle is registered")
+        row = conn.execute("""
+            UPDATE public.bookings SET driver_id=%s, vehicle_id=%s, status='accepted', updated_at=NOW()
+            WHERE id=%s AND status='requested' AND driver_id IS NULL RETURNING id
+        """, (driver["id"], vehicle["id"], booking_id)).fetchone()
+        if not row:
             raise HTTPException(409, "This booking is no longer available")
     return {"ok": True, "status": "accepted"}
 
@@ -413,34 +344,37 @@ def accept_booking(booking_id: str, authorization: Optional[str] = Header(defaul
 def cancel_booking(booking_id: str, authorization: Optional[str] = Header(default=None)):
     user = auth_user(authorization)
     with db() as conn:
-        row = conn.execute("SELECT * FROM bookings WHERE id=?", (booking_id,)).fetchone()
+        driver = get_driver(conn, user["id"])
+        row = conn.execute("SELECT passenger_id,driver_id,status FROM public.bookings WHERE id=%s",
+                           (booking_id,)).fetchone()
         if not row:
             raise HTTPException(404, "Booking not found")
-        if row["passenger_id"] != user["telegram_id"] and row["driver_id"] != user["telegram_id"]:
+        allowed = str(row["passenger_id"]) == str(user["id"]) or (
+            driver and row["driver_id"] and str(row["driver_id"]) == str(driver["id"]))
+        if not allowed:
             raise HTTPException(403, "Not your booking")
         if row["status"] in ("completed", "cancelled"):
             raise HTTPException(409, "Booking cannot be cancelled")
-        conn.execute("UPDATE bookings SET status='cancelled',updated_at=? WHERE id=?",
-                     (int(time.time()), booking_id))
-    return {"ok": True, "status": "cancelled"}
+        conn.execute("UPDATE public.bookings SET status='cancelled',updated_at=NOW() WHERE id=%s",
+                     (booking_id,))
 
 
 @app.post("/api/driver/bookings/{booking_id}/status")
 def driver_booking_status(booking_id: str, payload: BookingStatusUpdate,
                           authorization: Optional[str] = Header(default=None)):
     user = auth_user(authorization)
-    allowed = {"accepted": {"arrived", "cancelled"}, "arrived": {"in_progress", "cancelled"},
-               "in_progress": {"completed", "cancelled"}}
+    transitions = {"accepted": {"arrived", "cancelled"}, "arrived": {"in_progress", "cancelled"},
+                   "in_progress": {"completed", "cancelled"}}
     with db() as conn:
-        row = conn.execute("SELECT * FROM bookings WHERE id=?", (booking_id,)).fetchone()
+        driver = require_driver(conn, user["id"])
+        row = conn.execute("SELECT status FROM public.bookings WHERE id=%s AND driver_id=%s",
+                           (booking_id, driver["id"])).fetchone()
         if not row:
             raise HTTPException(404, "Booking not found")
-        if row["driver_id"] != user["telegram_id"]:
-            raise HTTPException(403, "Not your booking")
-        if payload.status not in allowed.get(row["status"], set()):
+        if payload.status not in transitions.get(row["status"], set()):
             raise HTTPException(409, "Invalid booking status transition")
-        conn.execute("UPDATE bookings SET status=?,updated_at=? WHERE id=?",
-                     (payload.status, int(time.time()), booking_id))
+        conn.execute("UPDATE public.bookings SET status=%s,updated_at=NOW() WHERE id=%s",
+                     (payload.status, booking_id))
     return {"ok": True, "status": payload.status}
 
 
@@ -450,10 +384,10 @@ def admin_overview(authorization: Optional[str] = Header(default=None)):
     require_admin(user)
     with db() as conn:
         return {
-            "users": conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
-            "pending_drivers": conn.execute("SELECT COUNT(*) FROM drivers WHERE status='pending'").fetchone()[0],
-            "active_drivers": conn.execute("SELECT COUNT(*) FROM drivers WHERE status='approved'").fetchone()[0],
-            "active_bookings": conn.execute("SELECT COUNT(*) FROM bookings WHERE status IN ('searching','accepted','arrived','in_progress')").fetchone()[0]
+            "users": conn.execute("SELECT COUNT(*) AS n FROM public.users").fetchone()["n"],
+            "pending_drivers": conn.execute("SELECT COUNT(*) AS n FROM public.drivers WHERE status='pending'").fetchone()["n"],
+            "active_drivers": conn.execute("SELECT COUNT(*) AS n FROM public.drivers WHERE status='approved'").fetchone()["n"],
+            "active_bookings": conn.execute("SELECT COUNT(*) AS n FROM public.bookings WHERE status IN ('requested','accepted','arrived','in_progress')").fetchone()["n"]
         }
 
 
@@ -463,8 +397,15 @@ def admin_drivers(authorization: Optional[str] = Header(default=None)):
     require_admin(user)
     with db() as conn:
         rows = conn.execute("""
-            SELECT d.*,u.first_name,u.username FROM drivers d
-            JOIN users u ON u.telegram_id=d.telegram_id ORDER BY d.updated_at DESC LIMIT 200
+            SELECT d.id AS driver_id, u.telegram_user_id::TEXT AS telegram_id,
+                   u.full_name AS first_name, u.username, u.phone,
+                   d.status, v.plate_number, v.model AS vehicle_model
+            FROM public.drivers d JOIN public.users u ON u.id=d.user_id
+            LEFT JOIN LATERAL (
+                SELECT plate_number, model FROM public.vehicles
+                WHERE driver_id=d.id ORDER BY created_at DESC LIMIT 1
+            ) v ON TRUE
+            ORDER BY d.created_at DESC LIMIT 200
         """).fetchall()
     return {"items": [dict(r) for r in rows]}
 
@@ -474,11 +415,12 @@ def approve_driver(driver_id: str, authorization: Optional[str] = Header(default
     user = auth_user(authorization)
     require_admin(user)
     with db() as conn:
-        cur = conn.execute("UPDATE drivers SET status='approved',admin_note='',updated_at=? WHERE telegram_id=? AND status='pending'",
-                           (int(time.time()), driver_id))
-        if cur.rowcount != 1:
+        driver = conn.execute("UPDATE public.drivers SET status='approved', reviewed_by=%s, reviewed_at=NOW(), rejection_reason=NULL, updated_at=NOW() WHERE id=%s AND status='pending' RETURNING user_id",
+                              (user["id"], driver_id)).fetchone()
+        if not driver:
             raise HTTPException(404, "Pending driver not found")
-        conn.execute("UPDATE users SET role='driver' WHERE telegram_id=?", (driver_id,))
+        conn.execute("UPDATE public.users SET role='driver',updated_at=NOW() WHERE id=%s", (driver["user_id"],))
+        conn.execute("UPDATE public.vehicles SET status='approved' WHERE driver_id=%s AND status='pending'", (driver_id,))
     return {"ok": True, "status": "approved"}
 
 
@@ -487,11 +429,12 @@ def reject_driver(driver_id: str, authorization: Optional[str] = Header(default=
     user = auth_user(authorization)
     require_admin(user)
     with db() as conn:
-        cur = conn.execute("UPDATE drivers SET status='rejected',updated_at=? WHERE telegram_id=? AND status='pending'",
-                           (int(time.time()), driver_id))
-        if cur.rowcount != 1:
+        driver = conn.execute("UPDATE public.drivers SET status='rejected', reviewed_by=%s, reviewed_at=NOW(), updated_at=NOW() WHERE id=%s AND status='pending' RETURNING user_id",
+                              (user["id"], driver_id)).fetchone()
+        if not driver:
             raise HTTPException(404, "Pending driver not found")
-        conn.execute("UPDATE users SET role='passenger' WHERE telegram_id=?", (driver_id,))
+        conn.execute("UPDATE public.users SET role='passenger',updated_at=NOW() WHERE id=%s", (driver["user_id"],))
+        conn.execute("UPDATE public.vehicles SET status='rejected' WHERE driver_id=%s AND status='pending'", (driver_id,))
     return {"ok": True, "status": "rejected"}
 
 
@@ -499,16 +442,15 @@ def reject_driver(driver_id: str, authorization: Optional[str] = Header(default=
 def block_user(target_id: str, authorization: Optional[str] = Header(default=None)):
     user = auth_user(authorization)
     require_admin(user)
-    if target_id in ADMIN_IDS:
-        raise HTTPException(400, "Cannot block an administrator")
     with db() as conn:
-        cur = conn.execute("UPDATE users SET blocked=1 WHERE telegram_id=?", (target_id,))
-        conn.execute("UPDATE drivers SET status='blocked',updated_at=? WHERE telegram_id=?",
-                     (int(time.time()), target_id))
-        conn.execute("UPDATE bookings SET status='cancelled',updated_at=? WHERE driver_id=? AND status IN ('accepted','arrived','in_progress')",
-                     (int(time.time()), target_id))
-        if cur.rowcount != 1:
+        target = conn.execute("SELECT id,role FROM public.users WHERE telegram_user_id=%s",
+                              (int(target_id),)).fetchone()
+        if not target:
             raise HTTPException(404, "User not found")
+        if target["role"] == "admin":
+            raise HTTPException(400, "Cannot block an administrator")
+        conn.execute("UPDATE public.users SET account_status='suspended',updated_at=NOW() WHERE id=%s", (target["id"],))
+        conn.execute("UPDATE public.drivers SET status='blocked',online_status=FALSE,updated_at=NOW() WHERE user_id=%s", (target["id"],))
     return {"ok": True, "blocked": True}
 
 
@@ -517,8 +459,8 @@ def admin_bookings(authorization: Optional[str] = Header(default=None)):
     user = auth_user(authorization)
     require_admin(user)
     with db() as conn:
-        rows = conn.execute("SELECT * FROM bookings ORDER BY created_at DESC LIMIT 200").fetchall()
-    return {"items": [dict(r) for r in rows]}
+        rows = booking_rows(conn, "TRUE", ())
+    return {"items": [{**dict(r), "id": str(r["id"]), "passenger_id": str(r["passenger_id"])} for r in rows]}
 
 
 @app.get("/api/admin/blocked-plates")
@@ -526,7 +468,10 @@ def blocked_plates(authorization: Optional[str] = Header(default=None)):
     user = auth_user(authorization)
     require_admin(user)
     with db() as conn:
-        rows = conn.execute("SELECT telegram_id,plate_number,vehicle_model,status FROM drivers WHERE status='blocked' ORDER BY updated_at DESC").fetchall()
+        rows = conn.execute("""
+            SELECT id, plate_number, model AS vehicle_model, status
+            FROM public.vehicles WHERE status='blocked' ORDER BY created_at DESC
+        """).fetchall()
     return {"items": [dict(r) for r in rows]}
 
 
@@ -534,14 +479,14 @@ def blocked_plates(authorization: Optional[str] = Header(default=None)):
 def block_driver(driver_id: str, authorization: Optional[str] = Header(default=None)):
     user = auth_user(authorization)
     require_admin(user)
-    if driver_id in ADMIN_IDS:
-        raise HTTPException(400, "Cannot block an administrator")
     with db() as conn:
-        cur = conn.execute("UPDATE drivers SET status='blocked',updated_at=? WHERE telegram_id=?",
-                           (int(time.time()), driver_id))
-        conn.execute("UPDATE users SET blocked=1 WHERE telegram_id=?", (driver_id,))
-        conn.execute("UPDATE bookings SET status='cancelled',updated_at=? WHERE driver_id=? AND status IN ('accepted','arrived','in_progress')",
-                     (int(time.time()), driver_id))
-        if cur.rowcount != 1:
+        driver = conn.execute("UPDATE public.drivers SET status='blocked',online_status=FALSE,updated_at=NOW() WHERE id=%s RETURNING user_id",
+                              (driver_id,)).fetchone()
+        if not driver:
             raise HTTPException(404, "Driver not found")
+        conn.execute("UPDATE public.users SET account_status='suspended',updated_at=NOW() WHERE id=%s",
+                     (driver["user_id"],))
+        conn.execute("UPDATE public.vehicles SET status='blocked' WHERE driver_id=%s", (driver_id,))
+        conn.execute("UPDATE public.driver_locations SET is_online=FALSE,updated_at=NOW() WHERE driver_id=%s",
+                     (driver_id,))
     return {"ok": True, "blocked": True}
