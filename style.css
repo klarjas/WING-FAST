@@ -611,3 +611,39 @@ footer{
     overflow:visible!important;
   }
 }
+
+
+/* WING FAST — full-viewport premium light canvas */
+html,body{
+  width:100%!important;
+  min-width:320px;
+  min-height:100%!important;
+  margin:0!important;
+  background:#F5F7FA!important;
+  color:#202631!important;
+}
+body{min-height:100vh!important;min-height:100dvh!important}
+.app-shell{
+  width:100%!important;
+  max-width:none!important;
+  min-height:100vh!important;
+  min-height:100dvh!important;
+  height:auto!important;
+  max-height:none!important;
+  margin:0!important;
+  padding-top:env(safe-area-inset-top,0px);
+  border:0!important;
+  border-radius:0!important;
+  background:#F5F7FA!important;
+  box-shadow:none!important;
+  overflow-x:hidden;
+}
+.app-shell:before{display:none!important}
+.topbar,main,#appContent,.view,footer{background:transparent!important}
+.topbar{max-width:620px;margin:0 auto}
+main,#appContent,footer{max-width:620px;margin-left:auto;margin-right:auto}
+@media(min-width:601px){
+  body{display:block!important}
+  .app-shell{min-height:100vh!important;min-height:100dvh!important}
+}
+/* Retain the premium dark-green cards and floating navigation on the light canvas. */
