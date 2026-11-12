@@ -280,7 +280,6 @@
   $("loadAdmin").addEventListener("click", loadAdmin);
   $("savePromotionBtn").addEventListener("click", savePromotion);
   $("removePromotionBtn").addEventListener("click", removePromotion);
-  $("refreshBtn").addEventListener("click", boot);
   $("retryBtn").addEventListener("click", boot);
   boot();
 })();
@@ -300,7 +299,7 @@
       "Tap the map to set destination":"ចុចលើផែនទីដើម្បីកំណត់គោលដៅ",
       "No drivers currently online":"មិនមានអ្នកបើកបរអនឡាញទេ",
       "Your driver is on the way":"អ្នកបើកបរកំពុងធ្វើដំណើរមករកអ្នក",
-      "CHOOSE YOUR RIDE":"ជ្រើសរើសការធ្វើដំណើរ","Choose your vehicle":"ជ្រើសរើសយានជំនិះ","Sedan":"សេដង់","TukTuk":"តុកតុក","Motorcycle":"ម៉ូតូ",
+      "CHOOSE YOUR RIDE":"ជ្រើសរើសការធ្វើដំណើរ","Choose your vehicle":"ជ្រើសរើសយានជំនិះ","Sedan":"សេដង់","Tuk-Tuk":"តុកតុក","TukTuk":"តុកតុក","Motorcycle":"ម៉ូតូ",
       "Connecting to WING FAST…":"កំពុងភ្ជាប់ទៅ WING FAST…",
       "Connection problem":"មានបញ្ហាក្នុងការតភ្ជាប់",
       "Try again":"ព្យាយាមម្ដងទៀត",
@@ -427,7 +426,7 @@
       "Tap the map to set destination":"点击地图设置目的地",
       "No drivers currently online":"目前没有司机在线",
       "Your driver is on the way":"司机正在前往您的位置",
-      "CHOOSE YOUR RIDE":"选择您的出行方式","Choose your vehicle":"选择车型","Sedan":"轿车","TukTuk":"嘟嘟车","Motorcycle":"摩托车",
+      "CHOOSE YOUR RIDE":"选择出行方式","Choose your vehicle":"选择交通工具","Sedan":"轿车","Tuk-Tuk":"嘟嘟车","TukTuk":"嘟嘟车","Motorcycle":"摩托车",
       "Connecting to WING FAST…":"正在连接 WING FAST…",
       "Connection problem":"连接出现问题",
       "Try again":"重试",
