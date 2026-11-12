@@ -7,12 +7,8 @@
       tg.setBackgroundColor("#F5F7FA");
       tg.setHeaderColor("#F5F7FA");
       if (typeof tg.setBottomBarColor === "function") tg.setBottomBarColor("#FFFFFF");
+      // Keep the normal Telegram Mini App window; do not force fullscreen.
       if (typeof tg.expand === "function") tg.expand();
-      if (typeof tg.disableVerticalSwipes === "function") tg.disableVerticalSwipes();
-      if (typeof tg.requestFullscreen === "function" &&
-          (!tg.isVersionAtLeast || tg.isVersionAtLeast("8.0"))) {
-        tg.requestFullscreen();
-      }
     } catch (error) {
       console.warn("Telegram fullscreen mode is unavailable:", error);
     }
