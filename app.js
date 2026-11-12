@@ -181,3 +181,244 @@
   $("retryBtn").addEventListener("click", boot);
   boot();
 })();
+
+/* WING FAST multilingual interface: Khmer, Chinese and English. */
+(() => {
+  const dictionaries = {
+    km: {
+      "Connecting to WING FAST…":"កំពុងភ្ជាប់ទៅ WING FAST…",
+      "Connection problem":"មានបញ្ហាក្នុងការតភ្ជាប់",
+      "Try again":"ព្យាយាមម្ដងទៀត",
+      "YOUR RIDE, YOUR WAY":"ការធ្វើដំណើរតាមរបៀបរបស់អ្នក",
+      "Hello":"សួស្តី",
+      "Passenger account":"គណនីអ្នកដំណើរ",
+      "Administrator":"អ្នកគ្រប់គ្រង",
+      "Approved driver":"អ្នកបើកបរដែលបានអនុម័ត",
+      "Driver application pending":"កំពុងរង់ចាំការអនុម័តអ្នកបើកបរ",
+      "Passenger":"អ្នកដំណើរ",
+      "WING FAST member":"សមាជិក WING FAST",
+      "ONLINE":"កំពុងអនឡាញ",
+      "Ride":"កក់ដំណើរ",
+      "Activity":"ប្រវត្តិដំណើរ",
+      "Driver":"អ្នកបើកបរ",
+      "Admin":"អ្នកគ្រប់គ្រង",
+      "CAMBODIA SERVICE AREA":"តំបន់សេវាកម្មកម្ពុជា",
+      "Set your pickup point":"កំណត់ទីតាំងទទួល",
+      "Use your current GPS location":"ប្រើទីតាំង GPS បច្ចុប្បន្ន",
+      "BOOK A RIDE":"កក់ការធ្វើដំណើរ",
+      "Where to?":"តើអ្នកចង់ទៅទីណា?",
+      "Pickup location":"ទីតាំងទទួល",
+      "Current location":"ទីតាំងបច្ចុប្បន្ន",
+      "LOCATE":"កំណត់ទីតាំង",
+      "WAIT…":"សូមរង់ចាំ…",
+      "UPDATED":"បានធ្វើបច្ចុប្បន្នភាព",
+      "Destination":"គោលដៅ",
+      "Enter destination":"បញ្ចូលគោលដៅ",
+      "Vehicle":"ប្រភេទយានយន្ត",
+      "All vehicles":"យានយន្តទាំងអស់",
+      "Tuk Tuk":"តុកតុក",
+      "Car":"រថយន្ត",
+      "SUV":"រថយន្ត SUV",
+      "Motorbike":"ម៉ូតូ",
+      "Payment":"ការទូទាត់",
+      "Cash":"សាច់ប្រាក់",
+      "Digital":"ឌីជីថល",
+      "FIND A DRIVER":"ស្វែងរកអ្នកបើកបរ",
+      "YOUR JOURNEY":"ដំណើររបស់អ្នក",
+      "Ride activity":"ប្រវត្តិការធ្វើដំណើរ",
+      "Refresh":"ផ្ទុកឡើងវិញ",
+      "Your rides will appear here.":"ដំណើររបស់អ្នកនឹងបង្ហាញនៅទីនេះ។",
+      "Loading rides…":"កំពុងផ្ទុកប្រវត្តិដំណើរ…",
+      "No rides yet.":"មិនទាន់មានដំណើរទេ។",
+      "CANCEL RIDE":"បោះបង់ការធ្វើដំណើរ",
+      "DRIVER CENTER":"មជ្ឈមណ្ឌលអ្នកបើកបរ",
+      "Driver dashboard":"ផ្ទាំងគ្រប់គ្រងអ្នកបើកបរ",
+      "NOT REGISTERED":"មិនទាន់ចុះឈ្មោះ",
+      "Driver registration":"ការចុះឈ្មោះអ្នកបើកបរ",
+      "Submit your vehicle details. Admin approval is required before receiving trips.":"សូមបញ្ជូនព័ត៌មានយានយន្ត។ ត្រូវការការអនុម័តពីអ្នកគ្រប់គ្រង មុនពេលទទួលដំណើរ។",
+      "Phone number":"លេខទូរស័ព្ទ",
+      "Vehicle type":"ប្រភេទយានយន្ត",
+      "Vehicle model":"ម៉ូដែលយានយន្ត",
+      "License plate":"ស្លាកលេខយានយន្ត",
+      "SUBMIT FOR APPROVAL":"បញ្ជូនសម្រាប់ការអនុម័ត",
+      "DRIVER STATUS":"ស្ថានភាពអ្នកបើកបរ",
+      "Ready for requests":"រួចរាល់សម្រាប់ទទួលការកក់",
+      "Turn on location to receive nearby ride requests.":"បើកទីតាំង ដើម្បីទទួលការកក់នៅក្បែរនេះ។",
+      "GO ONLINE":"បើកអនឡាញ",
+      "GO OFFLINE":"បិទអនឡាញ",
+      "CONNECTING…":"កំពុងភ្ជាប់…",
+      "Available requests":"សំណើធ្វើដំណើរដែលមាន",
+      "No ride requests right now.":"មិនទាន់មានសំណើធ្វើដំណើរទេ។",
+      "ACCEPT RIDE":"ទទួលយកដំណើរ",
+      "CONTROL CENTER":"មជ្ឈមណ្ឌលគ្រប់គ្រង",
+      "Admin panel":"ផ្ទាំងអ្នកគ្រប់គ្រង",
+      "Driver applications":"ពាក្យស្នើសុំអ្នកបើកបរ",
+      "Recent bookings":"ការកក់ថ្មីៗ",
+      "USERS":"អ្នកប្រើប្រាស់",
+      "PENDING DRIVERS":"អ្នកបើកបររង់ចាំ",
+      "ACTIVE DRIVERS":"អ្នកបើកបរសកម្ម",
+      "ACTIVE RIDES":"ដំណើរកំពុងដំណើរការ",
+      "APPROVE":"អនុម័ត",
+      "REJECT":"បដិសេធ",
+      "BLOCK DRIVER":"បិទអ្នកបើកបរ",
+      "BLOCKED":"ត្រូវបានបិទ",
+      "No driver applications yet.":"មិនទាន់មានពាក្យស្នើសុំអ្នកបើកបរទេ។",
+      "No bookings yet.":"មិនទាន់មានការកក់ទេ។",
+      "SAFE · SIMPLE · FAST":"សុវត្ថិភាព · ងាយស្រួល · រហ័ស",
+      "Pickup:":"ទីតាំងទទួល៖",
+      "Status:":"ស្ថានភាព៖",
+      "Passenger:":"អ្នកដំណើរ៖",
+      "GPS is not supported by this device.":"ឧបករណ៍នេះមិនគាំទ្រ GPS ទេ។",
+      "Pickup location updated.":"បានធ្វើបច្ចុប្បន្នភាពទីតាំងទទួល។",
+      "Please share your pickup location first.":"សូមចែករំលែកទីតាំងទទួលជាមុនសិន។",
+      "Please enter your destination.":"សូមបញ្ចូលគោលដៅរបស់អ្នក។",
+      "SENDING REQUEST…":"កំពុងផ្ញើសំណើ…",
+      "Application submitted. Please wait for admin approval.":"បានបញ្ជូនពាក្យស្នើសុំ។ សូមរង់ចាំការអនុម័តពីអ្នកគ្រប់គ្រង។",
+      "Your application is waiting for admin approval.":"ពាក្យស្នើសុំរបស់អ្នកកំពុងរង់ចាំការអនុម័ត។",
+      "GPS is not available.":"មិនអាចប្រើ GPS បានទេ។",
+      "Please open WING FAST from its Telegram bot.":"សូមបើក WING FAST តាមរយៈ Telegram Bot។",
+      "Block this driver and account?":"តើអ្នកចង់បិទអ្នកបើកបរ និងគណនីនេះមែនទេ?"
+    },
+    zh: {
+      "Connecting to WING FAST…":"正在连接 WING FAST…",
+      "Connection problem":"连接出现问题",
+      "Try again":"重试",
+      "YOUR RIDE, YOUR WAY":"按您的方式出行",
+      "Hello":"您好",
+      "Passenger account":"乘客账户",
+      "Administrator":"管理员",
+      "Approved driver":"已认证司机",
+      "Driver application pending":"司机申请审核中",
+      "Passenger":"乘客",
+      "WING FAST member":"WING FAST 用户",
+      "ONLINE":"在线",
+      "Ride":"叫车",
+      "Activity":"行程记录",
+      "Driver":"司机",
+      "Admin":"管理",
+      "CAMBODIA SERVICE AREA":"柬埔寨服务区域",
+      "Set your pickup point":"设置上车地点",
+      "Use your current GPS location":"使用当前 GPS 位置",
+      "BOOK A RIDE":"预约行程",
+      "Where to?":"您要去哪里？",
+      "Pickup location":"上车地点",
+      "Current location":"当前位置",
+      "LOCATE":"定位",
+      "WAIT…":"请稍候…",
+      "UPDATED":"已更新",
+      "Destination":"目的地",
+      "Enter destination":"输入目的地",
+      "Vehicle":"车型",
+      "All vehicles":"所有车型",
+      "Tuk Tuk":"嘟嘟车",
+      "Car":"轿车",
+      "SUV":"SUV",
+      "Motorbike":"摩托车",
+      "Payment":"付款方式",
+      "Cash":"现金",
+      "Digital":"数字支付",
+      "FIND A DRIVER":"寻找司机",
+      "YOUR JOURNEY":"您的行程",
+      "Ride activity":"行程记录",
+      "Refresh":"刷新",
+      "Your rides will appear here.":"您的行程将显示在这里。",
+      "Loading rides…":"正在加载行程…",
+      "No rides yet.":"暂无行程。",
+      "CANCEL RIDE":"取消行程",
+      "DRIVER CENTER":"司机中心",
+      "Driver dashboard":"司机面板",
+      "NOT REGISTERED":"尚未注册",
+      "Driver registration":"司机注册",
+      "Submit your vehicle details. Admin approval is required before receiving trips.":"请提交车辆信息。获得管理员批准后才能接单。",
+      "Phone number":"电话号码",
+      "Vehicle type":"车辆类型",
+      "Vehicle model":"车辆型号",
+      "License plate":"车牌号码",
+      "SUBMIT FOR APPROVAL":"提交审核",
+      "DRIVER STATUS":"司机状态",
+      "Ready for requests":"已准备好接单",
+      "Turn on location to receive nearby ride requests.":"开启定位以接收附近的订单。",
+      "GO ONLINE":"上线接单",
+      "GO OFFLINE":"下线",
+      "CONNECTING…":"正在连接…",
+      "Available requests":"可接订单",
+      "No ride requests right now.":"目前没有订单。",
+      "ACCEPT RIDE":"接受订单",
+      "CONTROL CENTER":"控制中心",
+      "Admin panel":"管理面板",
+      "Driver applications":"司机申请",
+      "Recent bookings":"最近订单",
+      "USERS":"用户",
+      "PENDING DRIVERS":"待审核司机",
+      "ACTIVE DRIVERS":"在线司机",
+      "ACTIVE RIDES":"进行中的行程",
+      "APPROVE":"批准",
+      "REJECT":"拒绝",
+      "BLOCK DRIVER":"封禁司机",
+      "BLOCKED":"已封禁",
+      "No driver applications yet.":"暂无司机申请。",
+      "No bookings yet.":"暂无订单。",
+      "SAFE · SIMPLE · FAST":"安全 · 简单 · 快捷",
+      "Pickup:":"上车地点：",
+      "Status:":"状态：",
+      "Passenger:":"乘客：",
+      "GPS is not supported by this device.":"此设备不支持 GPS。",
+      "Pickup location updated.":"上车地点已更新。",
+      "Please share your pickup location first.":"请先分享您的上车位置。",
+      "Please enter your destination.":"请输入目的地。",
+      "SENDING REQUEST…":"正在发送请求…",
+      "Application submitted. Please wait for admin approval.":"申请已提交，请等待管理员审核。",
+      "Your application is waiting for admin approval.":"您的申请正在等待管理员审核。",
+      "GPS is not available.":"GPS 不可用。",
+      "Please open WING FAST from its Telegram bot.":"请通过 Telegram 机器人打开 WING FAST。",
+      "Block this driver and account?":"确定封禁此司机及其账户吗？"
+    }
+  };
+  let currentLanguage = "km";
+  const replacements = Object.entries(dictionaries.km).concat(Object.entries(dictionaries.zh));
+  const englishKeys = [...new Set(replacements.map(([key]) => key))].sort((a,b) => b.length-a.length);
+  const textMap = (value) => {
+    if (currentLanguage === "en") return value;
+    const dict = dictionaries[currentLanguage] || {};
+    let output = value;
+    for (const key of englishKeys) {
+      if (dict[key]) output = output.split(key).join(dict[key]);
+    }
+    return output;
+  };
+  function translateElement(root) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    for (const node of nodes) node.nodeValue = textMap(node.nodeValue);
+    root.querySelectorAll?.("[placeholder],[aria-label],[title]").forEach((el) => {
+      for (const attr of ["placeholder","aria-label","title"]) {
+        if (el.hasAttribute(attr)) el.setAttribute(attr, textMap(el.getAttribute(attr)));
+      }
+    });
+  }
+  function setLanguage(language) {
+    currentLanguage = ["km","zh","en"].includes(language) ? language : "km";
+    document.documentElement.lang = currentLanguage;
+    try { localStorage.setItem("wing_fast_language", currentLanguage); } catch (_) {}
+    translateElement(document.body);
+  }
+  const selector = document.getElementById("languageSelect");
+  if (selector) {
+    let saved = "km";
+    try { saved = localStorage.getItem("wing_fast_language") || "km"; } catch (_) {}
+    selector.value = ["km","zh","en"].includes(saved) ? saved : "km";
+    selector.addEventListener("change", () => setLanguage(selector.value));
+    setLanguage(selector.value);
+  }
+  const observer = new MutationObserver((records) => {
+    for (const record of records) {
+      if (record.type === "childList") record.addedNodes.forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE) translateElement(node);
+        else if (node.nodeType === Node.TEXT_NODE) node.nodeValue = textMap(node.nodeValue);
+      });
+    }
+  });
+  observer.observe(document.body, { childList:true, subtree:true });
+  window.WING_FAST_setLanguage = setLanguage;
+})();
