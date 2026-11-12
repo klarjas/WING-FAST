@@ -81,3 +81,84 @@ html,body,.app-shell,main{background-color:#000000!important}
 @media(max-width:480px){.location-modal{padding:0;align-items:flex-end}.location-modal-card{border-radius:18px 18px 0 0;max-height:96dvh;padding:14px 12px calc(14px + env(safe-area-inset-bottom))}.location-map-wrap{height:38dvh;min-height:220px}.location-picker-actions{align-items:flex-start;flex-direction:column}.location-picker-actions .muted{text-align:left}}
 
 .location-modal.hidden{display:none!important}
+
+
+/* WING FAST — premium black & champagne-gold visual system */
+:root{
+  --bg:#000000;--panel:#101216;--panel2:#171a20;--line:#292d35;
+  --white:#f7f7f5;--muted:#858b96;--yellow:#f5c84b;
+  --green:#59d6a0;--red:#ff6875;
+}
+html,body{background:#000!important}
+body{letter-spacing:.01em;-webkit-font-smoothing:antialiased}
+.app-shell{max-width:720px;padding-left:20px;padding-right:20px}
+.topbar{height:72px;border-bottom:1px solid #ffffff12}
+.brand{gap:12px;letter-spacing:2px}
+.brand-mark{width:42px;height:42px;border:1px solid #d9b44b;border-radius:13px 5px 13px 5px;transform:none;background:linear-gradient(145deg,#f5d77b18,#f5c84b04);box-shadow:0 0 24px #f5c84b0c}
+.brand b{color:#f5c84b}
+.brand small{font-size:7px;letter-spacing:2.4px;color:#777d87}
+.top-actions select{background:#101216!important;border-color:#ffffff18!important;border-radius:10px!important}
+.icon-btn{border-color:#ffffff1c;background:#101216;border-radius:12px;transition:.2s}
+.icon-btn:active{transform:scale(.96);border-color:#f5c84b}
+main{padding:23px 0 30px}
+.welcome{margin-bottom:22px;align-items:flex-end}
+.welcome h1{font-size:28px;line-height:1.35;letter-spacing:-.6px}
+.welcome p{font-size:11px;color:#858b96}
+.eyebrow{font-size:9px;letter-spacing:2.2px;color:#e6bf52}
+.status-pill{border-color:#28543f66;background:#59d6a00b;padding:7px 11px}
+.panel{background:linear-gradient(145deg,#14171c,#0d0f12 80%);border:1px solid #ffffff12;border-radius:20px;box-shadow:0 12px 34px #0008}
+.vehicle-picker{padding:19px 17px 17px}
+.section-heading{margin-bottom:17px}
+.section-heading h2{font-size:19px;letter-spacing:-.2px}
+.step{border:1px solid #ffffff17;border-radius:20px;padding:5px 9px;font-size:9px;color:#9da3ad}
+.vehicle-options{gap:9px}
+.vehicle-option{min-height:94px;border-radius:16px;background:linear-gradient(145deg,#171a20,#101216);border-color:#ffffff14;gap:8px;transition:transform .18s,border-color .18s,background .18s,box-shadow .18s}
+.vehicle-option svg{width:47px;height:34px;color:#aeb4bf}
+.vehicle-option span{font-size:10px;letter-spacing:.2px;color:#d2d5db}
+.vehicle-option:active{transform:scale(.97)}
+.vehicle-option.active{background:linear-gradient(145deg,#f5c84b1d,#f5c84b08);border-color:#e7bd4a;box-shadow:inset 0 0 0 1px #e7bd4a33,0 6px 22px #f5c84b0c}
+.vehicle-option.active span{color:#f5d77b}
+.form-panel{padding:20px 18px}
+.form-panel label{font-size:10px;letter-spacing:.3px;color:#aeb4be;margin:16px 0 8px}
+.location-row{min-height:53px;border-radius:14px;background:#090b0e;border-color:#ffffff17;padding:0 12px;transition:border-color .2s,box-shadow .2s}
+.location-row:focus-within,.location-row:active{border-color:#c5a344;box-shadow:0 0 0 3px #f5c84b0c}
+.location-row input{height:51px;font-size:12px}
+.location-row input::placeholder{color:#6f7681}
+.field-icon{width:10px;height:10px;box-shadow:0 0 0 4px #f5c84b12}
+.field-icon.destination{box-shadow:0 0 0 4px #ffffff0c}
+.small-action,.text-action{font-size:9px;letter-spacing:1px;color:#f2cc65}
+.two-col select,input,select{background:#090b0e;border-color:#ffffff17;border-radius:13px;min-height:48px}
+.btn{border-radius:14px;min-height:51px;letter-spacing:1.2px;transition:transform .15s,filter .15s,box-shadow .15s}
+.btn.primary{background:linear-gradient(115deg,#f8dc85 0%,#edc34e 48%,#d8a934 100%);color:#17130a;box-shadow:0 7px 22px #e8b93b20,inset 0 1px #fff8}
+.btn.primary:active{transform:translateY(1px) scale(.99);filter:brightness(.96)}
+.btn.full{margin-top:22px}
+.bottom-nav{background:#08090bf2;border-top:1px solid #ffffff16;box-shadow:0 -12px 34px #000b;backdrop-filter:blur(24px)}
+.bottom-nav-item{border-radius:14px;min-height:56px;font-size:10px;color:#7f8590}
+.bottom-nav-item.active{color:#f5d16a;background:linear-gradient(180deg,#f5c84b17,#f5c84b08);box-shadow:inset 0 0 0 1px #f5c84b1c}
+.bottom-nav-item .nav-icon{font-size:21px}
+.profile-card,.profile-details,.profile-action{background:linear-gradient(145deg,#14171c,#0d0f12);border-color:#ffffff13}
+.profile-avatar{border-radius:17px;background:linear-gradient(145deg,#f5c84b25,#f5c84b08);border-color:#b9943d;color:#f5d16a}
+.profile-role{color:#f5d16a}
+.ride-card,.admin-card,.stat{background:linear-gradient(145deg,#14171c,#0d0f12);border-color:#ffffff13;border-radius:16px}
+.mini-btn{border-radius:10px;background:#1b1f26;border-color:#ffffff18}
+.mini-btn.good{color:#f5d16a;border-color:#806b31}
+.location-modal{background:#000d;backdrop-filter:blur(12px)}
+.location-modal-card{background:#0d0f12;border:1px solid #ffffff1b;border-radius:22px;box-shadow:0 25px 90px #000e}
+.location-map-wrap{border-radius:16px;border-color:#ffffff1a}
+.route-options{border-color:#ffffff16}
+.route-options select{height:46px}
+.location-modal-footer .btn{min-height:48px}
+.btn.secondary{background:#191d23;border-color:#ffffff18}
+footer{border-color:#ffffff12;color:#646b76}
+@media(min-width:600px){
+ .app-shell{padding-left:26px;padding-right:26px}
+ .vehicle-picker{padding:22px}
+ .form-panel{padding:23px}
+}
+@media(max-width:390px){
+ .app-shell{padding-left:13px;padding-right:13px}
+ .vehicle-picker{padding:16px 13px}
+ .form-panel{padding:17px 14px}
+ .vehicle-options{gap:6px}
+ .vehicle-option{min-height:84px;border-radius:14px}
+}
