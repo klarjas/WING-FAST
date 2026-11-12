@@ -287,17 +287,30 @@ def create_booking(payload: BookingCreate, authorization: Optional[str] = Header
     if (payload.destination_lat is None) != (payload.destination_lon is None):
         raise HTTPException(422, "Destination coordinates must include both latitude and longitude")
     with db() as conn:
+        price = conn.execute("""
+            SELECT base_fare, price_per_km, minimum_fare
+            FROM public.pricing
+            WHERE vehicle_type=%s AND is_active=TRUE
+        """, (payload.vehicle_type,)).fetchone()
+        estimated_fare = None
+        if price and payload.estimated_distance_km is not None:
+            estimated_fare = max(
+                float(price["minimum_fare"]),
+                float(price["base_fare"]) + float(price["price_per_km"]) * payload.estimated_distance_km
+            )
         row = conn.execute("""
             INSERT INTO public.bookings (
                 passenger_id, pickup_latitude, pickup_longitude, pickup_address,
                 destination_latitude, destination_longitude, destination_address,
-                vehicle_type, payment_method, distance_mode, estimated_distance_km, status
-            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'requested')
+                vehicle_type, payment_method, distance_mode, estimated_distance_km,
+                estimated_fare, status
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'requested')
             RETURNING id
         """, (user["id"], payload.pickup_lat, payload.pickup_lon,
               payload.pickup_text.strip(), payload.destination_lat, payload.destination_lon,
               clean(payload.destination_text, 180, "Destination"),
-              payload.vehicle_type, payload.payment_method, payload.distance_mode, payload.estimated_distance_km)).fetchone()
+              payload.vehicle_type, payload.payment_method, payload.distance_mode,
+              payload.estimated_distance_km, estimated_fare)).fetchone()
     return {"ok": True, "booking_id": str(row["id"]), "status": "searching"}
 
 
