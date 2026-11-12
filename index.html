@@ -10,12 +10,8 @@
 </head>
 <body>
   <div class="app-shell">
-    <header class="topbar">
-      <div class="brand"><span>WING <b>FAST</b></span></div>
-      
-    </header>
     <main>
-      <section id="loading" class="panel center"><div class="loader"></div><p>Connecting to WING FAST…</p></section>
+      <section id="loading" class="loading-screen" role="status" aria-live="polite"><div class="loading-orbit"><span></span><span></span><span></span><b>W</b></div><p>Connecting to WING FAST…</p><small>PLEASE WAIT</small></section>
       <section id="errorPanel" class="panel hidden"><h2>Connection problem</h2><p id="errorText"></p><button class="btn primary" id="retryBtn">Try again</button></section>
       <section id="appContent" class="hidden">
         <nav class="bottom-nav" id="tabs" aria-label="Main navigation">
