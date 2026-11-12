@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0B0D10">
+  <title>WING FAST</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">W</span><span>WING <b>FAST</b><small>MOVE WITH CONFIDENCE</small></span></div>
+      <button id="refreshBtn" class="icon-btn" aria-label="Refresh">↻</button>
+    </header>
+    <main>
+      <section id="loading" class="panel center"><div class="loader"></div><p>Connecting to WING FAST…</p></section>
+      <section id="errorPanel" class="panel hidden"><h2>Connection problem</h2><p id="errorText"></p><button class="btn primary" id="retryBtn">Try again</button></section>
+      <section id="appContent" class="hidden">
+        <div class="welcome"><div><span class="eyebrow">YOUR RIDE, YOUR WAY</span><h1 id="greeting">Hello</h1><p id="roleLabel">Passenger account</p></div><span class="status-pill"><i></i> ONLINE</span></div>
+        <nav class="tabs" id="tabs">
+          <button class="tab active" data-view="ride">Ride</button>
+          <button class="tab" data-view="activity">Activity</button>
+          <button class="tab hidden" data-view="driver">Driver</button>
+          <button class="tab hidden" data-view="admin">Admin</button>
+        </nav>
+
+        <section id="rideView" class="view">
+          <div class="map-card">
+            <div class="map-grid"></div><div class="map-label"><span class="map-dot"></span> CAMBODIA SERVICE AREA</div>
+            <div class="map-pin">⌖</div><div class="map-bottom"><b>Set your pickup point</b><span>Use your current GPS location</span></div>
+          </div>
+          <div class="panel form-panel">
+            <div class="section-heading"><div><span class="eyebrow">BOOK A RIDE</span><h2>Where to?</h2></div><span class="step">01 / 02</span></div>
+            <label>Pickup location</label>
+            <div class="location-row"><span class="field-icon pickup"></span><input id="pickupText" placeholder="Current location" readonly><button id="locateBtn" class="small-action">LOCATE</button></div>
+            <label>Destination</label>
+            <div class="location-row"><span class="field-icon destination"></span><input id="destination" placeholder="Enter destination"></div>
+            <div class="two-col">
+              <div><label>Vehicle</label><select id="vehicleType"><option value="all">All vehicles</option><option value="tuk_tuk">Tuk Tuk</option><option value="car">Car</option><option value="suv">SUV</option><option value="motorbike">Motorbike</option></select></div>
+              <div><label>Payment</label><select id="payment"><option value="cash">Cash</option><option value="digital">Digital</option></select></div>
+            </div>
+            <button id="bookBtn" class="btn primary full">FIND A DRIVER <span>→</span></button>
+            <p id="bookingMessage" class="message" aria-live="polite"></p>
+          </div>
+        </section>
+
+        <section id="activityView" class="view hidden">
+          <div class="section-heading"><div><span class="eyebrow">YOUR JOURNEY</span><h2>Ride activity</h2></div><button class="text-action" id="loadActivity">Refresh</button></div>
+          <div id="activityList" class="stack"><div class="empty-state">Your rides will appear here.</div></div>
+        </section>
+
+        <section id="driverView" class="view hidden">
+          <div class="section-heading"><div><span class="eyebrow">DRIVER CENTER</span><h2>Driver dashboard</h2></div><span id="driverStatus" class="status-pill">NOT REGISTERED</span></div>
+          <div id="driverApplyPanel" class="panel form-panel">
+            <h3>Driver registration</h3><p class="muted">Submit your vehicle details. Admin approval is required before receiving trips.</p>
+            <label>Phone number</label><input id="driverPhone" placeholder="+855 …">
+            <label>Vehicle type</label><select id="driverVehicle"><option value="tuk_tuk">Tuk Tuk</option><option value="car">Car</option><option value="suv">SUV</option><option value="motorbike">Motorbike</option></select>
+            <label>Vehicle model</label><input id="driverModel" placeholder="e.g. Toyota Prius">
+            <label>License plate</label><input id="driverPlate" placeholder="e.g. ភ្នំពេញ 2AB-1234">
+            <button id="applyDriverBtn" class="btn primary full">SUBMIT FOR APPROVAL</button><p id="driverMessage" class="message"></p>
+          </div>
+          <div id="driverActivePanel" class="hidden">
+            <div class="panel driver-live"><div><span class="eyebrow">DRIVER STATUS</span><h3>Ready for requests</h3><p class="muted">Turn on location to receive nearby ride requests.</p></div><button id="shareLocationBtn" class="btn primary">GO ONLINE</button></div>
+            <div class="section-heading"><h2>Available requests</h2><button class="text-action" id="loadRequests">Refresh</button></div>
+            <div id="requestList" class="stack"><div class="empty-state">No ride requests right now.</div></div>
+          </div>
+        </section>
+
+        <section id="adminView" class="view hidden">
+          <div class="section-heading"><div><span class="eyebrow">CONTROL CENTER</span><h2>Admin panel</h2></div><button class="text-action" id="loadAdmin">Refresh</button></div>
+          <div id="adminStats" class="stats-grid"></div>
+          <h3>Driver applications</h3><div id="adminDrivers" class="stack"></div>
+          <h3>Recent bookings</h3><div id="adminBookings" class="stack"></div>
+        </section>
+      </section>
+    </main>
+    <footer><span>WING FAST</span><span>SAFE · SIMPLE · FAST</span></footer>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
