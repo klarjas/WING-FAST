@@ -316,3 +316,29 @@ main{
   .app-shell{max-width:100%;padding-left:14px;padding-right:14px}
   .bottom-nav{max-width:100%}
 }
+
+
+/* Light theme: keep language and payment controls consistent with white UI */
+#languageSelect,
+#payment,
+.two-col select,
+.route-options select,
+select {
+  color-scheme: light;
+  background-color: #FFFFFF !important;
+  color: #202631 !important;
+  border: 1px solid #DDE3EB !important;
+}
+#languageSelect option,
+#payment option,
+select option {
+  background-color: #FFFFFF;
+  color: #202631;
+}
+#languageSelect:focus,
+#payment:focus,
+.two-col select:focus {
+  border-color: #E9AE00 !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(233,174,0,.12);
+}
