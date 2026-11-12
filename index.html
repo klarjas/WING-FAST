@@ -25,6 +25,7 @@
         </nav>
 
         <section id="rideView" class="view">
+          <div id="promotionBanner" class="promotion-banner hidden" aria-label="Promotion"><img id="promotionImage" alt="Promotion"></div>
           <div class="panel vehicle-picker">
             <div class="section-heading"><div><span class="eyebrow">CHOOSE YOUR RIDE</span><h2>Choose your vehicle</h2></div><span class="step">01 / 03</span></div>
             <div class="vehicle-options" role="group" aria-label="Choose vehicle type">
@@ -99,6 +100,15 @@
 
         <section id="adminView" class="view hidden">
           <div class="section-heading"><div><span class="eyebrow">CONTROL CENTER</span><h2>Admin panel</h2></div><button class="text-action" id="loadAdmin">Refresh</button></div>
+          <section class="panel promotion-admin">
+            <div class="section-heading"><div><span class="eyebrow">PROMOTION</span><h3>Promotion image</h3></div><span class="step">BANNER</span></div>
+            <div id="adminPromotionPreview" class="promotion-admin-preview"><span>No promotion image</span></div>
+            <label for="promotionUpload">Upload or replace image</label>
+            <input id="promotionUpload" type="file" accept="image/jpeg,image/png,image/webp">
+            <button type="button" id="savePromotionBtn" class="btn primary full">SAVE PROMOTION</button>
+            <button type="button" id="removePromotionBtn" class="text-action promotion-remove hidden">REMOVE PROMOTION</button>
+            <p id="promotionMessage" class="message" aria-live="polite"></p>
+          </section>
           <div id="adminStats" class="stats-grid"></div>
           <h3>Driver applications</h3><div id="adminDrivers" class="stack"></div>
           <h3>Recent bookings</h3><div id="adminBookings" class="stack"></div>
