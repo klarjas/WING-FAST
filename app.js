@@ -33,6 +33,18 @@
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
   }
+  function revealViewTopDown(panel) {
+    if (!panel) return;
+    const items = Array.from(panel.children).filter((item) => !item.classList.contains("hidden"));
+    items.forEach((item, index) => {
+      item.classList.remove("top-down-reveal");
+      item.style.animationDelay = "0ms";
+      void item.offsetWidth;
+      item.style.animationDelay = (index * 95) + "ms";
+      item.classList.add("top-down-reveal");
+    });
+  }
+
   function setView(view) {
     const allowedViews = ["ride","activity","profile","driver","admin"];
     if (!allowedViews.includes(view)) view = "ride";
@@ -46,6 +58,8 @@
       const panel = $(name + "View");
       if (panel) panel.classList.toggle("hidden", name !== view);
     });
+    const activePanel = $(view + "View");
+    revealViewTopDown(activePanel);
     document.querySelector("main")?.scrollTo({top:0,behavior:"instant"});
     if (view === "activity") loadActivity();
     if (view === "driver") loadDriverView();
