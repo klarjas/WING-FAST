@@ -63,10 +63,9 @@
   function animateAppReveal() {
     const view = document.querySelector("#rideView:not(.hidden)");
     if (!view) return;
-    const items = [
-      ...Array.from(view.children).filter(el => !el.classList.contains("hidden")),
-      ...Array.from(view.querySelectorAll(".vehicle-option"))
-    ];
+    const items = Array.from(view.querySelectorAll(":scope > :not(.hidden), .vehicle-option"))
+      .filter(el => !el.classList.contains("hidden"))
+      .sort((a,b) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1);
     items.forEach((el, index) => {
       el.classList.remove("anime-reveal");
       el.style.animationDelay = (index * 105) + "ms";
@@ -76,6 +75,9 @@
   }
 
   async function boot() {
+    $("loading").classList.remove("hidden");
+    $("errorPanel").classList.add("hidden");
+    $("appContent").classList.add("hidden");
     try {
       if (!tg && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") throw new Error("Please open WING FAST from its Telegram bot.");
       const result = await api("/api/me");
