@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#F5F7FA">
+  <meta name="theme-color" content="#08080A">
   <title>WING FAST</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700;900&family=Koh+Santepheap:wght@400;700;900&display=swap" rel="stylesheet"><link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -30,27 +30,27 @@
             <div class="section-heading"><div><span class="eyebrow">CHOOSE YOUR RIDE</span><h2>Choose your vehicle</h2></div><span class="step">01 / 03</span></div>
             <div class="vehicle-options" role="group" aria-label="Choose vehicle type">
               <button type="button" class="vehicle-option" data-vehicle-choice="suv" aria-pressed="false">
-                <img src="/static/assets/vehicles/image_c9629b29.jpg" alt="SUV">
+                <svg viewBox="0 0 64 40" aria-hidden="true"><path d="M9 25 14 15Q16 11 22 11h20q5 0 8 5l5 9v6H9z" fill="currentColor" opacity=".22" stroke="currentColor" stroke-width="2"/><path d="m19 15 4-1h17l5 7H16z" fill="currentColor" opacity=".4"/><circle cx="19" cy="31" r="5" fill="#08080A" stroke="currentColor" stroke-width="2"/><circle cx="46" cy="31" r="5" fill="#08080A" stroke="currentColor" stroke-width="2"/></svg>
                 <span>SUV</span>
               </button>
               <button type="button" class="vehicle-option" data-vehicle-choice="car" aria-pressed="false">
-                <img src="/static/assets/vehicles/image_bff1c33b.jpg" alt="Sedan">
+                <svg viewBox="0 0 64 40" aria-hidden="true"><path d="m8 25 5-8q2-4 8-4h23q5 0 8 5l4 7v6H8z" fill="currentColor" opacity=".22" stroke="currentColor" stroke-width="2"/><path d="m19 16 4-1h17l5 7H15z" fill="currentColor" opacity=".4"/><circle cx="19" cy="31" r="5" fill="#08080A" stroke="currentColor" stroke-width="2"/><circle cx="46" cy="31" r="5" fill="#08080A" stroke="currentColor" stroke-width="2"/></svg>
                 <span>Sedan</span>
               </button>
               <button type="button" class="vehicle-option" data-vehicle-choice="tuk_tuk" aria-pressed="false">
-                <img src="/static/assets/vehicles/image_68bf02f1.jpg" alt="Tuk Tuk">
+                <svg viewBox="0 0 64 40" aria-hidden="true"><path d="M12 26 16 16h25l8 10v6H12z" fill="currentColor" opacity=".25" stroke="currentColor" stroke-width="2"/><path d="M20 16V9h17v7" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="19" cy="32" r="4" fill="#08080A" stroke="currentColor" stroke-width="2"/><circle cx="44" cy="32" r="4" fill="#08080A" stroke="currentColor" stroke-width="2"/></svg>
                 <span>Tuk-Tuk</span>
               </button>
               <button type="button" class="vehicle-option" data-vehicle-choice="motorbike" aria-pressed="false">
-                <img src="/static/assets/vehicles/image_3dc561ec.jpg" alt="Motorcycle">
+                <svg viewBox="0 0 64 40" aria-hidden="true"><circle cx="16" cy="29" r="7" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="48" cy="29" r="7" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="m16 29 10-12 9 12H16l8-9h13l11 9-8-16h-7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/></svg>
                 <span>Motorcycle</span>
               </button>
               <button type="button" class="vehicle-option" data-vehicle-choice="van" aria-pressed="false">
-                <img src="/static/assets/vehicles/image_cb8bc9ca.jpg" alt="Van">
+                <svg viewBox="0 0 64 40" aria-hidden="true"><path d="M8 12h34q5 0 7 5l7 10v5H8z" fill="currentColor" opacity=".22" stroke="currentColor" stroke-width="2"/><path d="M43 14v10h10l-5-8q-1-2-5-2" fill="currentColor" opacity=".4"/><circle cx="19" cy="32" r="5" fill="#08080A" stroke="currentColor" stroke-width="2"/><circle cx="47" cy="32" r="5" fill="#08080A" stroke="currentColor" stroke-width="2"/></svg>
                 <span>Van</span>
               </button>
             </div>
-            <select id="vehicleType" class="visually-hidden" aria-hidden="true" tabindex="-1"><option value="">Choose vehicle</option><option value="suv">SUV</option><option value="car">Sedan</option><option value="tuk_tuk">Tuk-Tuk</option><option value="motorbike">Motorcycle</option><option value="van">Van</option></select>
+            <select id="vehicleType class="visually-hidden" aria-hidden="true" tabindex="-1"><option value="">Choose vehicle</option><option value="suv">SUV</option><option value="car">Sedan</option><option value="tuk_tuk">Tuk-Tuk</option><option value="motorbike">Motorcycle</option><option value="van">Van</option></select>
           </div>
           <div id="locationPicker" class="location-modal hidden" role="dialog" aria-modal="true" aria-labelledby="locationModalTitle">
             <div class="location-modal-card">
