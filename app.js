@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-  if (tg) { tg.ready(); tg.expand(); }
+  if (tg) { tg.ready(); tg.expand(); try { tg.setBackgroundColor("#000000"); tg.setHeaderColor("#000000"); } catch (_) {} }
   const $ = (id) => document.getElementById(id);
   const state = { user:null,driver:null,pickup:null,destination:null,map:null,driverMarkers:new Map(),pickupMarker:null,destinationMarker:null,routeLine:null,mapMode:"pickup",liveTimer:null,watchId:null,locationTimer:null };
   const authHeaders = () => ({ "Content-Type": "application/json", "Authorization": "tma " + (tg ? tg.initData : "") });
