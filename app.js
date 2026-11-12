@@ -77,6 +77,7 @@
       if (state.user.role === "admin") $("profileAdminAction").classList.remove("hidden");
       $("loading").classList.add("hidden"); $("errorPanel").classList.add("hidden"); $("appContent").classList.remove("hidden");
       checkLocationPermission();
+      loadPromotion();
     } catch (e) { showError(e); }
   }
   function locate(){openLocationPicker("pickup");}
@@ -157,10 +158,80 @@
     try { await api("/api/driver/bookings/" + encodeURIComponent(id) + "/accept", {method:"POST"}); loadRequests(); }
     catch (e) { alert(e.message); }
   }
+  let promotionObjectUrl = null;
+  async function loadPromotionImage(mediaId, targetId) {
+    const target = $(targetId);
+    if (!target) return;
+    try {
+      const response = await fetch("/api/media/" + encodeURIComponent(mediaId), {headers: authHeaders()});
+      if (!response.ok) throw new Error("Image unavailable");
+      const url = URL.createObjectURL(await response.blob());
+      if (targetId === "promotionImage") {
+        if (promotionObjectUrl) URL.revokeObjectURL(promotionObjectUrl);
+        promotionObjectUrl = url;
+        target.src = url;
+        $("promotionBanner").classList.remove("hidden");
+      } else {
+        target.innerHTML = '<img src="' + url + '" alt="Current promotion">';
+      }
+    } catch (_) {
+      if (targetId === "promotionImage") $("promotionBanner").classList.add("hidden");
+      else target.textContent = "Image preview unavailable";
+    }
+  }
+  async function loadPromotion() {
+    try {
+      const data = await api("/api/promotions/active");
+      const p = data.promotion;
+      if (!p) {
+        $("promotionBanner").classList.add("hidden");
+        $("adminPromotionPreview").innerHTML = '<span>No promotion image</span>';
+        $("removePromotionBtn").classList.add("hidden");
+        return;
+      }
+      await loadPromotionImage(p.media_id, "promotionImage");
+      await loadPromotionImage(p.media_id, "adminPromotionPreview");
+      $("removePromotionBtn").classList.remove("hidden");
+    } catch (e) {
+      $("promotionBanner").classList.add("hidden");
+      if ($("promotionMessage")) message("promotionMessage", e.message, "error");
+    }
+  }
+  async function savePromotion() {
+    const file = $("promotionUpload").files[0];
+    if (!file) { message("promotionMessage", "Choose an image first.", "error"); return; }
+    const btn = $("savePromotionBtn");
+    btn.disabled = true;
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("category", "other");
+      const response = await fetch("/api/media", {method:"POST", headers:{"Authorization":authHeaders().Authorization}, body:form});
+      const uploaded = await response.json().catch(()=>({}));
+      if (!response.ok) throw new Error(uploaded.detail || "Image upload failed");
+      await api("/api/admin/promotions", {method:"POST", body:JSON.stringify({media_id:uploaded.media.id})});
+      $("promotionUpload").value = "";
+      message("promotionMessage", "Promotion image saved.", "success");
+      await loadPromotion();
+    } catch (e) { message("promotionMessage", e.message, "error"); }
+    finally { btn.disabled = false; }
+  }
+  async function removePromotion() {
+    try {
+      const active = await api("/api/promotions/active");
+      if (!active.promotion || !confirm("Remove the current promotion image?")) return;
+      await api("/api/admin/promotions/" + encodeURIComponent(active.promotion.id), {method:"DELETE"});
+      $("promotionBanner").classList.add("hidden");
+      $("adminPromotionPreview").innerHTML = '<span>No promotion image</span>';
+      $("removePromotionBtn").classList.add("hidden");
+      message("promotionMessage", "Promotion removed.", "success");
+    } catch (e) { message("promotionMessage", e.message, "error"); }
+  }
+
   async function loadAdmin() {
     try {
       const [stats, drivers, bookings] = await Promise.all([
-        api("/api/admin/overview"), api("/api/admin/drivers"), api("/api/admin/bookings")
+        api("/api/admin/overview"), api("/api/admin/drivers"), api("/api/admin/bookings"), loadPromotion()
       ]);
       $("adminStats").innerHTML = [["USERS",stats.users],["PENDING DRIVERS",stats.pending_drivers],["ACTIVE DRIVERS",stats.active_drivers],["ACTIVE RIDES",stats.active_bookings]]
         .map(([label,value]) => '<div class="stat"><b>' + value + '</b><span>' + label + '</span></div>').join("");
@@ -207,6 +278,8 @@
   $("loadActivity").addEventListener("click", loadActivity);
   $("loadRequests").addEventListener("click", loadRequests);
   $("loadAdmin").addEventListener("click", loadAdmin);
+  $("savePromotionBtn").addEventListener("click", savePromotion);
+  $("removePromotionBtn").addEventListener("click", removePromotion);
   $("refreshBtn").addEventListener("click", boot);
   $("retryBtn").addEventListener("click", boot);
   boot();
