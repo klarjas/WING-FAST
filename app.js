@@ -31,7 +31,7 @@
   }
 
   function mapIcon(type){const h=type==="driver"?'<div class="driver-marker">🚕</div>':type==="pickup"?'<div class="pickup-marker"></div>':'<div class="destination-marker"></div>';return L.divIcon({html:h,className:"",iconSize:type==="driver"?[34,34]:[18,18],iconAnchor:type==="driver"?[17,17]:[9,9]});}
-  function initMap(){if(state.map||!window.L)return;state.map=L.map("liveMap").setView([11.5564,104.9282],13);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(state.map);state.map.on("click",e=>{const p={lat:e.latlng.lat,lon:e.latlng.lng};state.mapMode==="pickup"?setPickup(p,"Map selection"):setDestination(p,"Map selection");});setTimeout(()=>state.map.invalidateSize(),300);}
+  function initMap(){if(state.map||!window.L)return;state.map=L.map("liveMap").setView([11.5564,104.9282],13);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(state.map);state.map.on("click",e=>{const p={lat:e.latlng.lat,lon:e.latlng.lng};state.mapMode==="pickup"?setPickup(p,"Map selection"):setDestination(p,"Map selection");});if(state.pickup)setPickup(state.pickup,$("pickupText").value);if(state.destination)setDestination(state.destination,$("destination").value);setTimeout(()=>state.map&&state.map.invalidateSize(),300);}
   function setPickup(p,label){state.pickup={lat:+p.lat,lon:+p.lon};$("pickupText").value=label||state.pickup.lat.toFixed(5)+", "+state.pickup.lon.toFixed(5);if(state.map){if(state.pickupMarker)state.pickupMarker.setLatLng([p.lat,p.lon]);else state.pickupMarker=L.marker([p.lat,p.lon],{icon:mapIcon("pickup")}).addTo(state.map);}}
   function setDestination(p,label){state.destination={lat:+p.lat,lon:+p.lon};$("destination").value=label||state.destination.lat.toFixed(5)+", "+state.destination.lon.toFixed(5);if(state.map){if(state.destinationMarker)state.destinationMarker.setLatLng([p.lat,p.lon]);else state.destinationMarker=L.marker([p.lat,p.lon],{icon:mapIcon("destination")}).addTo(state.map);}}
   function mapMode(mode){state.mapMode=mode;document.querySelectorAll("[data-map-mode]").forEach(x=>x.classList.toggle("active",x.dataset.mapMode===mode));$("mapStatus").textContent=mode==="pickup"?"Tap the map to set passenger pickup":"Tap the map to set destination";}
@@ -39,7 +39,8 @@
   function useMapLink(){const p=coordsFromMapLink($("googleMapsLink").value.trim());if(!p){message("bookingMessage","Could not read coordinates. Paste a Google Maps URL containing coordinates, or latitude,longitude.","error");return;}setDestination(p,"Google Maps location");mapMode("destination");state.map.setView([p.lat,p.lon],16);}
   async function refreshDrivers(){if(!state.map)return;try{const data=await api("/api/drivers/live"),ids=new Set();data.items.forEach(d=>{ids.add(d.driver_id);const p=[+d.latitude,+d.longitude];let m=state.driverMarkers.get(d.driver_id);if(!m){m=L.marker(p,{icon:mapIcon("driver")}).addTo(state.map);state.driverMarkers.set(d.driver_id,m);}else m.setLatLng(p);m.bindPopup("<b>"+escapeHtml(d.vehicle_model||"WING FAST Driver")+"</b><br>"+escapeHtml(d.plate_number||""));});for(const [id,m] of state.driverMarkers)if(!ids.has(id)){state.map.removeLayer(m);state.driverMarkers.delete(id);}$("driverCount").textContent=data.items.length+" drivers online · refresh 5 sec";if(!$("mapStatus").textContent.startsWith("Tap the map"))$("mapStatus").textContent=data.items.length?"Live drivers on map":"No drivers currently online";await refreshDriverRoute();}catch(_){$("driverCount").textContent="Waiting for live driver locations…";}}
   async function refreshDriverRoute(){try{const data=await api("/api/bookings/mine"),b=data.items.find(x=>["accepted","arrived","in_progress"].includes(x.status)&&x.driver_lat!=null);if(!b||!state.pickup){if(state.routeLine){state.map.removeLayer(state.routeLine);state.routeLine=null;}return;}const a=[+b.driver_lat,+b.driver_lon],z=[+b.pickup_lat,+b.pickup_lon],u="https://router.project-osrm.org/route/v1/driving/"+a[1]+","+a[0]+";"+z[1]+","+z[0]+"?overview=full&geometries=geojson",r=await(await fetch(u)).json();if(!r.routes||!r.routes[0])return;const pts=r.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);if(state.routeLine)state.routeLine.setLatLngs(pts);else state.routeLine=L.polyline(pts,{color:"#FFC928",weight:5,opacity:.9}).addTo(state.map);$("mapStatus").textContent="Your driver is on the way";}catch(_){}}
-  function startLiveMap(){initMap();if(!state.map)return;refreshDrivers();if(state.liveTimer)clearInterval(state.liveTimer);state.liveTimer=setInterval(refreshDrivers,5000);}
+  function startLiveMap(){if(!$("vehicleType").value)return;$("rideMapStage").classList.remove("hidden");initMap();if(!state.map)return;setTimeout(()=>state.map.invalidateSize(),150);refreshDrivers();if(state.liveTimer)clearInterval(state.liveTimer);state.liveTimer=setInterval(refreshDrivers,5000);}
+  function chooseVehicle(type){$("vehicleType").value=type;document.querySelectorAll("[data-vehicle-choice]").forEach(btn=>{const active=btn.dataset.vehicleChoice===type;btn.classList.toggle("active",active);btn.setAttribute("aria-pressed",String(active));});startLiveMap();}
 
   async function boot() {
     try {
@@ -51,7 +52,7 @@
       if (["driver","driver_pending"].includes(state.user.role) || state.driver) document.querySelector('[data-view="driver"]').classList.remove("hidden");
       if (state.user.role === "admin") document.querySelector('[data-view="admin"]').classList.remove("hidden");
       $("loading").classList.add("hidden"); $("errorPanel").classList.add("hidden"); $("appContent").classList.remove("hidden");
-      startLiveMap(); if (!state.pickup) locate(false);
+      if (!state.pickup) locate(false);
     } catch (e) { showError(e); }
   }
   function locate(showAlert = true) {
@@ -182,6 +183,7 @@
   });
   $("locateBtn").addEventListener("click",()=>locate(true));
   document.querySelectorAll("[data-map-mode]").forEach(x=>x.addEventListener("click",()=>mapMode(x.dataset.mapMode)));
+  document.querySelectorAll("[data-vehicle-choice]").forEach(x=>x.addEventListener("click",()=>chooseVehicle(x.dataset.vehicleChoice)));
   $("useMapLinkBtn").addEventListener("click",useMapLink);
   $("destination").addEventListener("change",()=>{const p=coordsFromMapLink($("destination").value);if(p)setDestination(p,$("destination").value);});
   $("bookBtn").addEventListener("click", bookRide);
@@ -208,6 +210,7 @@
       "Tap the map to set destination":"ចុចលើផែនទីដើម្បីកំណត់គោលដៅ",
       "No drivers currently online":"មិនមានអ្នកបើកបរអនឡាញទេ",
       "Your driver is on the way":"អ្នកបើកបរកំពុងធ្វើដំណើរមករកអ្នក",
+      "CHOOSE YOUR RIDE":"ជ្រើសរើសការធ្វើដំណើរ","Choose your vehicle":"ជ្រើសរើសយានជំនិះ","Sedan":"សេដង់","TukTuk":"តុកតុក","Motorcycle":"ម៉ូតូ",
       "Connecting to WING FAST…":"កំពុងភ្ជាប់ទៅ WING FAST…",
       "Connection problem":"មានបញ្ហាក្នុងការតភ្ជាប់",
       "Try again":"ព្យាយាមម្ដងទៀត",
@@ -311,6 +314,7 @@
       "Tap the map to set destination":"点击地图设置目的地",
       "No drivers currently online":"目前没有司机在线",
       "Your driver is on the way":"司机正在前往您的位置",
+      "CHOOSE YOUR RIDE":"选择您的出行方式","Choose your vehicle":"选择车型","Sedan":"轿车","TukTuk":"嘟嘟车","Motorcycle":"摩托车",
       "Connecting to WING FAST…":"正在连接 WING FAST…",
       "Connection problem":"连接出现问题",
       "Try again":"重试",
