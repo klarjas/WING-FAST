@@ -79,3 +79,5 @@ html,body,.app-shell,main{background-color:#000000!important}
 .location-select-row{cursor:pointer}
 .location-select-row input{cursor:pointer}
 @media(max-width:480px){.location-modal{padding:0;align-items:flex-end}.location-modal-card{border-radius:18px 18px 0 0;max-height:96dvh;padding:14px 12px calc(14px + env(safe-area-inset-bottom))}.location-map-wrap{height:38dvh;min-height:220px}.location-picker-actions{align-items:flex-start;flex-direction:column}.location-picker-actions .muted{text-align:left}}
+
+.location-modal.hidden{display:none!important}
