@@ -255,8 +255,8 @@ html,body{
   overscroll-behavior-y:contain;
 }
 body{
-  min-height:var(--tg-viewport-stable-height, 100dvh);
   min-height:100vh;
+  min-height:var(--tg-viewport-stable-height, 100dvh);
 }
 .app-shell{
   width:100%;
