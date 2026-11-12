@@ -1,7 +1,22 @@
 (() => {
   "use strict";
   const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-  if (tg) { tg.ready(); tg.expand(); try { tg.setBackgroundColor("#F5F7FA"); tg.setHeaderColor("#F5F7FA"); } catch (_) {} }
+  if (tg) {
+    tg.ready();
+    try {
+      tg.setBackgroundColor("#F5F7FA");
+      tg.setHeaderColor("#F5F7FA");
+      if (typeof tg.setBottomBarColor === "function") tg.setBottomBarColor("#FFFFFF");
+      if (typeof tg.expand === "function") tg.expand();
+      if (typeof tg.disableVerticalSwipes === "function") tg.disableVerticalSwipes();
+      if (typeof tg.requestFullscreen === "function" &&
+          (!tg.isVersionAtLeast || tg.isVersionAtLeast("8.0"))) {
+        tg.requestFullscreen();
+      }
+    } catch (error) {
+      console.warn("Telegram fullscreen mode is unavailable:", error);
+    }
+  }
   const $ = (id) => document.getElementById(id);
   const state = { user:null,driver:null,pickup:null,destination:null,map:null,driverMarkers:new Map(),pickupMarker:null,destinationMarker:null,routeLine:null,selectedRouteLine:null,mapMode:"pickup",pickerMode:"pickup",mapCandidate:null,distanceMode:"road",distanceKm:null,liveTimer:null,watchId:null,locationTimer:null,locationPermission:"unknown",locationAsked:false };
   const authHeaders = () => ({ "Content-Type": "application/json", "Authorization": "tma " + (tg ? tg.initData : "") });
