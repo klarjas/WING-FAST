@@ -696,3 +696,79 @@ main,#appContent,footer{max-width:620px;margin-left:auto;margin-right:auto}
   font-weight:700;
 }
 .nav-language-item select option{background:#13201E!important;color:#F4FBF8!important}
+
+
+/* WING FAST — centered loading + cinematic staggered entrance */
+.loading-screen{
+  position:fixed!important;inset:0!important;z-index:5000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:13px;padding:24px;background:#F5F7FA!important;color:#202A36!important;
+  text-align:center;
+}
+.loading-screen p{margin:0;color:#253342!important;font-size:14px;font-weight:700;letter-spacing:.1px}
+.loading-screen small{color:#718096!important;font:700 9px "Plus Jakarta Sans",sans-serif;letter-spacing:2.5px}
+.loading-orbit{position:relative;width:76px;height:76px;display:grid;place-items:center}
+.loading-orbit:before,.loading-orbit:after{
+  content:"";position:absolute;inset:0;border-radius:50%;
+  border:2px solid transparent;border-top-color:#16845C;border-right-color:#16845C;
+  animation:wingOrbit 1.15s cubic-bezier(.55,.1,.35,.9) infinite;
+}
+.loading-orbit:after{inset:8px;border-top-color:#B8D88B;border-right-color:#B8D88B;animation-duration:.82s;animation-direction:reverse}
+.loading-orbit span{position:absolute;width:7px;height:7px;border-radius:50%;background:#16845C;top:0;left:35px;box-shadow:0 0 13px #16845C88;transform-origin:3px 38px;animation:wingOrbit 1.6s linear infinite}
+.loading-orbit span:nth-child(2){animation-delay:-.53s;transform:rotate(120deg)}
+.loading-orbit span:nth-child(3){animation-delay:-1.06s;transform:rotate(240deg)}
+.loading-orbit b{font:800 25px "Plus Jakarta Sans",sans-serif;color:#16845C;letter-spacing:-2px}
+@keyframes wingOrbit{to{transform:rotate(360deg)}}
+@keyframes animeRise{
+  0%{opacity:0;transform:translate3d(0,22px,0) scale(.985);filter:blur(5px)}
+  65%{opacity:1;filter:blur(0)}
+  100%{opacity:1;transform:translate3d(0,0,0) scale(1);filter:blur(0)}
+}
+.anime-reveal{animation:animeRise .62s cubic-bezier(.2,.75,.25,1) both;will-change:transform,opacity,filter}
+
+/* Light neutral surfaces across all content cards, with readable contrast */
+:root{color-scheme:light;--bg:#F5F7FA;--panel:#EEF1F5;--panel2:#E9EDF2;--line:#DCE2E9;--white:#202A36;--muted:#64748B}
+body,.app-shell,main,#appContent,.view{background:#F5F7FA!important;color:#202A36!important}
+.panel,.ride-card,.driver-card,.admin-card,.stat,.location-modal-card,.promotion-admin-preview,.empty-state{
+  background:#EEF1F5!important;color:#202A36!important;border:1px solid #DCE2E9!important;
+  box-shadow:0 5px 18px rgba(31,45,61,.055)!important;
+}
+.panel h2,.panel h3,.ride-card strong,.driver-card strong,.admin-card strong,
+.section-heading h2,.section-heading h3,.profile-main h3{color:#202A36!important}
+.panel p,.panel .muted,.ride-card small,.driver-card small,.stat span,
+.profile-detail span,.empty-state{color:#64748B!important}
+label{color:#475569!important}
+input,select,.location-row,.mini-btn{
+  background:#FFFFFF!important;color:#253342!important;border-color:#D5DDE6!important;
+}
+input::placeholder{color:#94A3B8!important}
+.location-row input{background:transparent!important;color:#253342!important}
+.small-action,.text-action{color:#167A56!important}
+.step{color:#64748B!important;background:#FFFFFF!important;border-color:#DCE2E9!important}
+.vehicle-picker{background:#F5F7FA!important}
+.vehicle-option{background:#E9EDF2!important;color:#334155!important;border-color:#D8E0E8!important}
+.vehicle-option span{color:#334155!important}
+.vehicle-option svg{color:#64748B!important}
+.vehicle-option.active{background:#FFFFFF!important;border-color:#16845C!important;color:#116B4B!important}
+.vehicle-option.active span,.vehicle-option.active svg{color:#116B4B!important}
+.profile-avatar{background:#E1F2E9!important;color:#167A56!important}
+.status-pill{background:#E1F2E9!important;color:#167A56!important;border-color:#B8DDC9!important}
+.message{color:#64748B!important}
+.message.success{color:#167A56!important}
+.message.error{color:#C2414B!important}
+.empty-state{border-style:dashed!important}
+.promotion-banner{margin-top:0!important;margin-bottom:0!important}
+#rideView{gap:10px!important}
+main{padding-top:5px!important}
+.topbar{display:none!important}
+footer{color:#64748B!important;border-color:#DCE2E9!important}
+.location-modal{background:rgba(15,23,42,.42)!important}
+.location-modal-card{background:#EEF1F5!important}
+.location-modal-card .muted{color:#64748B!important}
+.location-modal-card .location-map-wrap{background:#E2E8F0!important}
+.bottom-nav{background:rgba(13,25,25,.97)!important}
+.nav-language-item select{background:rgba(255,255,255,.07)!important;color:#F4FBF8!important}
+@media(prefers-reduced-motion:reduce){
+  .loading-orbit:before,.loading-orbit:after,.loading-orbit span{animation-duration:3s}
+  .anime-reveal{animation:none;opacity:1;filter:none;transform:none}
+}
