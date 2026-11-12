@@ -800,3 +800,49 @@ footer{color:#64748B!important;border-color:#DCE2E9!important}
 .language-choice.active{background:#167A56!important;color:#FFFFFF!important;box-shadow:0 3px 9px rgba(22,122,86,.2)!important}
 .app-shell{padding-bottom:calc(105px + env(safe-area-inset-bottom))!important}
 @media(max-width:380px){.bottom-nav{width:calc(100% - 18px)!important;padding:7px 6px!important}.bottom-nav-item span{font-size:9px!important}}
+
+
+/* Stability pass: no entrance jumps, no nav reflow, fixed banner footprint */
+.view{animation:none!important;transition:none!important}
+.anime-reveal{animation:none!important;opacity:1!important;filter:none!important;transform:none!important;will-change:auto!important}
+.bottom-nav,.bottom-nav-item,.language-toggle,.nav-language-item{
+  box-sizing:border-box!important;flex-shrink:0!important;transform:none!important;
+}
+.bottom-nav{min-height:76px!important;align-items:stretch!important}
+.bottom-nav-item,.language-toggle{
+  min-height:56px!important;height:56px!important;display:flex!important;
+  flex-direction:column!important;align-items:center!important;justify-content:center!important;
+  gap:3px!important;padding:5px 3px!important;line-height:1.15!important;
+  transition:none!important;
+}
+.bottom-nav-item:active,.language-toggle:active{transform:none!important}
+.bottom-nav-item .nav-icon,.language-toggle .nav-icon{display:block!important;flex:none!important;width:21px!important;height:21px!important}
+.bottom-nav-item span,.language-toggle span{display:block!important;position:static!important;margin:0!important;line-height:1.15!important}
+.nav-language-item.language-switcher{display:flex!important;align-items:stretch!important;justify-content:center!important}
+.language-toggle{width:100%!important;color:#334155!important;background:transparent!important;border:0!important}
+.language-menu{z-index:1300!important;white-space:nowrap!important}
+.promotion-banner{
+  display:block!important;position:relative!important;width:100%!important;
+  height:clamp(118px,30vw,170px)!important;min-height:118px!important;
+  margin:0 0 12px!important;overflow:hidden!important;border-radius:18px!important;
+  background:linear-gradient(135deg,#E8EEF3,#F7F9FB)!important;
+  border:1px solid #DCE4EA!important;box-shadow:0 5px 16px rgba(31,45,61,.06)!important;
+}
+.promotion-banner.hidden{display:block!important}
+.promotion-placeholder{
+  position:absolute!important;inset:0!important;display:flex!important;flex-direction:column!important;
+  align-items:center!important;justify-content:center!important;gap:4px!important;
+  color:#8493A2!important;pointer-events:none!important;z-index:0!important;
+}
+.promotion-placeholder span{font:800 17px "Plus Jakarta Sans",sans-serif!important;letter-spacing:2px!important;color:#8A9AA8!important}
+.promotion-placeholder small{font-size:10px!important;letter-spacing:1px!important}
+.promotion-banner img{
+  position:absolute!important;inset:0!important;z-index:1!important;display:block!important;
+  width:100%!important;height:100%!important;object-fit:cover!important;
+  opacity:0!important;transition:none!important;
+}
+.promotion-banner.has-image img{opacity:1!important}
+.app-shell{padding-bottom:calc(112px + env(safe-area-inset-bottom))!important}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}
+}
