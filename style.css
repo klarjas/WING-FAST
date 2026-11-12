@@ -387,3 +387,52 @@ input::placeholder{color:#718096}
 footer{color:#64748B;border-color:rgba(255,255,255,.08)}
 @media(max-width:600px){.app-shell{width:100%;max-width:100%;min-height:100dvh;height:auto;margin:0;border:0;border-radius:0;padding-left:14px;padding-right:14px;box-shadow:none}.bottom-nav{width:calc(100% - 24px);max-width:430px;bottom:max(8px,env(safe-area-inset-bottom))}}
 @media(min-width:601px){body{min-height:100vh;display:flex;align-items:center;justify-content:center}.app-shell{height:92vh;max-height:900px;min-height:720px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#303640 transparent}}
+
+
+/* WING FAST — elevated next-generation mobility interface */
+:root{--bg:#070A0D;--panel:#10171A;--panel2:#142126;--line:rgba(177,207,198,.12);--white:#F4FBF8;--muted:#91A7A2;--yellow:#B8F36B;--green:#35E0A1;--accent:#35E0A1;--accent2:#B8F36B;--red:#FF7185}
+html,body{background:#070A0D!important;color:var(--white)}
+body{background:radial-gradient(ellipse at 50% -12%,rgba(38,221,157,.15),transparent 38%),radial-gradient(ellipse at 100% 44%,rgba(115,205,115,.06),transparent 32%),#070A0D!important;font-family:"Kantumruy Pro","Plus Jakarta Sans",sans-serif}
+.app-shell{max-width:470px;min-height:94vh;margin:3vh auto 0;padding:0 17px 112px;border:1px solid rgba(170,255,216,.12);border-radius:34px;background:linear-gradient(180deg,rgba(13,22,23,.98),rgba(7,11,13,.99));box-shadow:0 30px 100px rgba(0,0,0,.72),0 0 70px rgba(31,220,151,.055),inset 0 1px rgba(255,255,255,.045);position:relative;isolation:isolate}
+.app-shell:before{content:"";position:absolute;z-index:-1;pointer-events:none;top:0;left:8%;right:8%;height:260px;background:radial-gradient(ellipse at 50% 0%,rgba(38,221,157,.13),transparent 68%)}
+.topbar{height:76px;border-bottom:1px solid rgba(180,225,209,.10)}
+.brand{font-family:"Plus Jakarta Sans","Kantumruy Pro",sans-serif;font-size:16px;letter-spacing:2.4px;font-weight:800}.brand b{color:#B8F36B;text-shadow:0 0 24px rgba(184,243,107,.3)}
+.top-actions{display:flex;align-items:center;gap:8px}.top-actions select{background:#111C1D!important;border:1px solid rgba(184,243,107,.17)!important;border-radius:12px!important;color:#EAF8F2!important}
+.icon-btn{background:linear-gradient(145deg,#172427,#0d1517);border:1px solid rgba(177,230,206,.15);border-radius:13px;color:#DFF9EE}
+main{padding:19px 0 30px}#rideView{display:flex;flex-direction:column;gap:14px}
+.panel,.ride-card,.driver-card,.admin-card,.stat{background:linear-gradient(145deg,rgba(22,34,35,.96),rgba(13,21,23,.98));border:1px solid rgba(176,223,205,.12);border-radius:23px;box-shadow:0 15px 36px rgba(0,0,0,.23),inset 0 1px rgba(255,255,255,.025)}
+.vehicle-picker{padding:20px 17px 17px;position:relative;overflow:hidden}
+.vehicle-picker:after{content:"";position:absolute;right:-62px;top:-84px;width:190px;height:190px;border-radius:50%;border:1px solid rgba(53,224,161,.11);box-shadow:0 0 0 22px rgba(53,224,161,.025),0 0 0 46px rgba(53,224,161,.018);pointer-events:none}
+.section-heading{position:relative;z-index:1;margin-bottom:17px}.eyebrow{color:#9BEA9A;font-family:"Plus Jakarta Sans","Kantumruy Pro",sans-serif;font-size:9px;letter-spacing:2.1px;font-weight:800}
+.section-heading h2{font-size:21px;letter-spacing:-.45px;margin-top:4px}.step{color:#B7D2C7;border:1px solid rgba(184,243,107,.18);background:rgba(184,243,107,.055);border-radius:30px;padding:6px 10px;font-size:9px}
+.vehicle-options{grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;position:relative;z-index:1}
+.vehicle-option{min-height:92px;padding:9px 3px;border-radius:17px;background:linear-gradient(155deg,#1B2929,#111A1C);border:1px solid rgba(181,221,205,.11);color:#B5C9C1;box-shadow:inset 0 1px rgba(255,255,255,.035)}
+.vehicle-option svg{width:46px;height:36px;color:#9AB4A8;filter:drop-shadow(0 4px 8px rgba(0,0,0,.3))}
+.vehicle-option span{font-family:"Plus Jakarta Sans","Kantumruy Pro",sans-serif;font-size:9px;font-weight:700;letter-spacing:-.1px;color:#C7DAD2}
+.vehicle-option:active{transform:scale(.97)}
+.vehicle-option.active{background:linear-gradient(150deg,rgba(53,224,161,.2),rgba(184,243,107,.07));border-color:#4CE6A9;color:#B8F36B;box-shadow:0 0 0 1px rgba(53,224,161,.15),0 9px 25px rgba(23,214,145,.12),inset 0 1px rgba(255,255,255,.12);transform:translateY(-2px)}
+.vehicle-option.active svg{color:#B8F36B;filter:drop-shadow(0 0 8px rgba(53,224,161,.32))}.vehicle-option.active span{color:#D9FFB0}
+.form-panel{padding:21px 17px}.form-panel label{font-size:11px;color:#A9C0B7;margin:16px 0 8px}
+.location-row{min-height:58px;border-radius:17px;padding:0 13px;background:linear-gradient(110deg,#0B1214,#111D1F)!important;border:1px solid rgba(177,224,205,.14)!important;box-shadow:inset 0 1px rgba(255,255,255,.025)}
+.location-row:focus-within{border-color:rgba(53,224,161,.62)!important;box-shadow:0 0 0 3px rgba(53,224,161,.08),0 8px 22px rgba(0,0,0,.18)}
+.location-row input{background:transparent!important;color:#F4FBF8!important;font-size:12px}.location-row input::placeholder{color:#70877F}
+.field-icon{border-color:#B8F36B;box-shadow:0 0 0 5px rgba(184,243,107,.09)}.field-icon.destination{border-color:#F4FBF8;box-shadow:0 0 0 5px rgba(244,251,248,.06)}
+.small-action,.text-action{color:#A9F28A;font-size:9px;letter-spacing:1px}
+select,input{background:#101B1D!important;border:1px solid rgba(177,224,205,.14)!important;color:#F4FBF8!important;border-radius:15px}
+select:focus,input:focus{outline:none;border-color:rgba(53,224,161,.55)!important}
+.btn{min-height:54px;border-radius:17px;font-family:"Plus Jakarta Sans","Kantumruy Pro",sans-serif;font-size:10px;letter-spacing:1.15px}
+.btn.primary{color:#06140F;background:linear-gradient(110deg,#B8F36B 0%,#62E7A0 52%,#35DDB0 100%);box-shadow:0 10px 28px rgba(53,224,161,.2),inset 0 1px rgba(255,255,255,.65)}
+.btn.primary:active{transform:translateY(1px) scale(.99);filter:brightness(.96)}.btn.full{margin-top:22px}
+.bottom-nav{width:min(calc(100% - 28px),430px);max-width:430px;bottom:max(10px,env(safe-area-inset-bottom));border:1px solid rgba(176,231,207,.13);border-radius:23px;background:rgba(12,21,22,.88);backdrop-filter:blur(28px) saturate(160%);box-shadow:0 16px 48px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.055);padding:8px 9px calc(8px + env(safe-area-inset-bottom))}
+.bottom-nav-item{min-height:52px;border-radius:16px;color:#789087;font-family:"Kantumruy Pro","Plus Jakarta Sans",sans-serif;font-size:10px}.bottom-nav-item .nav-icon{font-size:21px}
+.bottom-nav-item.active{color:#B8F36B;background:linear-gradient(180deg,rgba(53,224,161,.15),rgba(53,224,161,.055));box-shadow:inset 0 0 0 1px rgba(53,224,161,.13)}
+.promotion-banner{border:1px solid rgba(53,224,161,.2);box-shadow:0 12px 30px rgba(0,0,0,.28)}
+.location-modal{background:rgba(2,7,8,.82)!important;backdrop-filter:blur(18px)}.location-modal-card{background:linear-gradient(145deg,#142122,#0A1113)!important;border:1px solid rgba(176,231,207,.17)!important;border-radius:25px!important;box-shadow:0 28px 90px #000c}
+.location-map-wrap{border-radius:19px;border-color:rgba(176,231,207,.15)}.map-center-pin:before{background:#B8F36B}
+.map-live-info .map-dot{background:#35E0A1;box-shadow:0 0 12px #35E0A1}
+.status-pill{color:#B8F36B;border-color:rgba(184,243,107,.24);background:rgba(184,243,107,.055)}
+.profile-avatar{background:linear-gradient(145deg,rgba(53,224,161,.2),rgba(184,243,107,.06));border:1px solid rgba(53,224,161,.3);color:#B8F36B}.profile-role{color:#B8F36B}.stat b{color:#B8F36B}
+.mini-btn.good{color:#B8F36B;border-color:rgba(184,243,107,.25)}footer{color:#688078;border-color:rgba(176,231,207,.1)}
+@media(max-width:600px){.app-shell{width:100%;max-width:100%;min-height:100dvh;height:auto;margin:0;border:0;border-radius:0;padding-left:14px;padding-right:14px;box-shadow:none}.app-shell:before{height:220px}.bottom-nav{width:calc(100% - 24px);bottom:max(8px,env(safe-area-inset-bottom))}}
+@media(min-width:601px){body{min-height:100vh;display:flex;align-items:center;justify-content:center}.app-shell{height:94vh;max-height:920px;min-height:740px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#28453B transparent}}
+@media(max-width:390px){.vehicle-options{gap:5px}.vehicle-option{min-height:84px}.vehicle-option svg{width:39px}.vehicle-option span{font-size:8px}}
