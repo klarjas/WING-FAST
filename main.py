@@ -11,8 +11,8 @@ from urllib.parse import parse_qsl
 
 import psycopg
 from psycopg.rows import dict_row
-from fastapi import FastAPI, Header, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, Header, HTTPException, UploadFile, File, Form
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
@@ -20,6 +20,7 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 SUPABASE_DB_URL = os.getenv("SUPABASE_DB_URL", "").strip()
 ADMIN_IDS = {x.strip() for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()}
+TELEGRAM_STORAGE_CHANNEL_ID = os.getenv("TELEGRAM_STORAGE_CHANNEL_ID", "").strip()
 INIT_DATA_MAX_AGE = int(os.getenv("INIT_DATA_MAX_AGE", "86400"))
 
 app = FastAPI(title="WING FAST API", version="2.0.0")
@@ -120,6 +121,132 @@ def require_driver(conn, user_uuid):
         raise HTTPException(403, "Driver account is not approved")
     return driver
 
+
+
+ALLOWED_MEDIA_CATEGORIES = {"vehicle", "profile", "document", "other"}
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+ALLOWED_DOCUMENT_TYPES = ALLOWED_IMAGE_TYPES | {"application/pdf"}
+
+
+def telegram_upload_file(field_name: str, filename: str, content_type: str, content: bytes) -> dict:
+    if not BOT_TOKEN or not TELEGRAM_STORAGE_CHANNEL_ID:
+        raise HTTPException(503, "Telegram image storage is not configured on the server")
+    boundary = "----WINGFAST" + uuid.uuid4().hex
+    parts = [
+        f"--{boundary}\r\nContent-Disposition: form-data; name=\"chat_id\"\r\n\r\n{TELEGRAM_STORAGE_CHANNEL_ID}\r\n".encode()
+    ]
+    parts.append(
+        (f"--{boundary}\r\nContent-Disposition: form-data; name=\"{field_name}\"; "
+         f"filename=\"{filename}\"\r\nContent-Type: {content_type}\r\n\r\n").encode()
+        + content + b"\r\n"
+    )
+    parts.append(f"--{boundary}--\r\n".encode())
+    request = urllib.request.Request(
+        f"https://api.telegram.org/bot{BOT_TOKEN}/"
+        + ("sendPhoto" if field_name == "photo" else "sendDocument"),
+        data=b"".join(parts),
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except Exception as exc:
+        raise HTTPException(502, f"Telegram upload failed: {type(exc).__name__}")
+    if not result.get("ok"):
+        raise HTTPException(502, "Telegram rejected the uploaded file")
+    return result["result"]
+
+
+@app.post("/api/media")
+async def upload_media(
+    file: UploadFile = File(...),
+    category: str = Form(default="other"),
+    authorization: Optional[str] = Header(default=None),
+):
+    user = auth_user(authorization)
+    if category not in ALLOWED_MEDIA_CATEGORIES:
+        raise HTTPException(422, "Invalid media category")
+    content_type = (file.content_type or "").lower()
+    allowed_types = ALLOWED_DOCUMENT_TYPES if category == "document" else ALLOWED_IMAGE_TYPES
+    if content_type not in allowed_types:
+        raise HTTPException(415, "Only JPG, PNG, WEBP images and PDF documents are accepted")
+    if category != "document" and content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(415, "This category only accepts images")
+    max_size = 20 * 1024 * 1024 if category == "document" else 10 * 1024 * 1024
+    content = await file.read(max_size + 1)
+    if not content or len(content) > max_size:
+        raise HTTPException(413, "File is empty or exceeds the upload size limit")
+    filename = os.path.basename(file.filename or "upload")
+    filename = re.sub(r"[^A-Za-z0-9._-]", "_", filename)[:120] or "upload"
+    field_name = "photo" if category != "document" else "document"
+    telegram_message = telegram_upload_file(field_name, filename, content_type, content)
+    stored = telegram_message.get("photo", [])[-1] if field_name == "photo" else telegram_message.get("document")
+    if not stored or not stored.get("file_id"):
+        raise HTTPException(502, "Telegram did not return a file ID")
+    with db() as conn:
+        row = conn.execute("""
+            INSERT INTO public.media_files
+                (telegram_file_id, telegram_file_unique_id, telegram_message_id,
+                 category, file_name, mime_type, file_size, uploaded_by)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+            RETURNING id, category, file_name, mime_type, file_size, created_at
+        """, (stored["file_id"], stored.get("file_unique_id"), telegram_message.get("message_id"),
+              category, filename, content_type, len(content), user["id"])).fetchone()
+    return {
+        "ok": True,
+        "media": {
+            "id": str(row["id"]),
+            "category": row["category"],
+            "file_name": row["file_name"],
+            "mime_type": row["mime_type"],
+            "file_size": row["file_size"],
+            "url": f"/api/media/{row['id']}",
+        },
+    }
+
+
+@app.get("/api/media/{media_id}")
+def get_media(media_id: str, authorization: Optional[str] = Header(default=None)):
+    user = auth_user(authorization)
+    with db() as conn:
+        media = conn.execute("""
+            SELECT id, telegram_file_id, category, file_name, mime_type, uploaded_by
+            FROM public.media_files WHERE id=%s
+        """, (media_id,)).fetchone()
+    if not media:
+        raise HTTPException(404, "Media not found")
+    if media["category"] == "document" and str(media["uploaded_by"]) != str(user["id"]):
+        require_admin(user)
+    if not BOT_TOKEN:
+        raise HTTPException(503, "Telegram bot is not configured")
+    try:
+        info_request = urllib.request.Request(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/getFile",
+            data=json.dumps({"file_id": media["telegram_file_id"]}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(info_request, timeout=20) as response:
+            info = json.loads(response.read().decode("utf-8"))
+        if not info.get("ok"):
+            raise RuntimeError("Telegram getFile failed")
+        file_path = info["result"]["file_path"]
+        file_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
+        with urllib.request.urlopen(file_url, timeout=30) as response:
+            content = response.read()
+    except Exception as exc:
+        raise HTTPException(502, f"Could not retrieve media from Telegram: {type(exc).__name__}")
+    safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", media["file_name"] or "media")
+    return Response(
+        content=content,
+        media_type=media["mime_type"] or "application/octet-stream",
+        headers={
+            "Content-Disposition": f'inline; filename="{safe_name}"',
+            "Cache-Control": "private, max-age=300",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 def clean(value, maximum, label):
     value = value.strip()
