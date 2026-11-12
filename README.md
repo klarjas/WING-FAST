@@ -26,7 +26,8 @@ Set these environment variables in the hosting dashboard (never commit secrets t
 
 - `BOT_TOKEN` — token from BotFather. Required for Telegram Mini App authentication.
 - `ADMIN_IDS` — comma-separated Telegram numeric user IDs of trusted administrators.
-- `DATABASE_PATH` — persistent SQLite file path. On a Render service with a mounted persistent disk, use a path such as `/var/data/wingfast.db`.
+- `SUPABASE_DB_URL` — Supabase PostgreSQL connection string (use the Session Pooler connection string and keep SSL enabled). Required for persistent production storage on Render Free.
+- `DATABASE_PATH` — optional local SQLite path used only when `SUPABASE_DB_URL` is not set.
 - `DEV_MODE` — leave unset or set to `false` in production. Only set `true` for isolated local testing without a bot token.
 
 ## Telegram setup
@@ -40,7 +41,7 @@ Set these environment variables in the hosting dashboard (never commit secrets t
 ## Important deployment notes
 
 - Use HTTPS. Browser GPS requires a secure context and the passenger/driver must grant location permission.
-- A SQLite database on an ephemeral container filesystem can be lost when the service restarts. Attach a persistent disk and set `DATABASE_PATH` to its mount path.
+- Render Free does not provide a persistent disk. Set `SUPABASE_DB_URL` to your Supabase PostgreSQL Session Pooler connection string; the backend then stores all users, drivers, bookings and locations in Supabase. If `SUPABASE_DB_URL` is absent, the app falls back to local SQLite, which is not persistent on Render Free.
 - Driver location is sent while the driver keeps the Mini App open and grants GPS permission. This is not Telegram's background Live Location feature.
 - Digital payment is currently a payment-method selection only; a payment provider and verified payment callback must be integrated before accepting online payments.
 - Fare calculation, map routing/geocoding, push notifications and production monitoring are not yet integrated.
