@@ -65,8 +65,6 @@
       if (!tg && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") throw new Error("Please open WING FAST from its Telegram bot.");
       const result = await api("/api/me");
       state.user = result.user; state.driver = result.driver;
-      $("greeting").textContent = "Hello, " + (state.user.first_name || "there");
-      $("roleLabel").textContent = ({ admin:"Administrator", driver:"Approved driver", driver_pending:"Driver application pending", passenger:"Passenger" })[state.user.role] || "WING FAST member";
       const displayName = [state.user.first_name, state.user.last_name].filter(Boolean).join(" ") || state.user.full_name || "WING FAST User";
       $("profileName").textContent = displayName;
       $("profileAvatar").textContent = (displayName.trim()[0] || "W").toUpperCase();
