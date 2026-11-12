@@ -23,8 +23,8 @@
     return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
   }
   function setView(view) {
-    document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
-    ["ride","activity","driver","admin"].forEach((v) => $(v + "View").classList.toggle("hidden", v !== view));
+    document.querySelectorAll(".bottom-nav .tab").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
+    ["ride","activity","profile","driver","admin"].forEach((v) => { const panel = $(v + "View"); if (panel) panel.classList.toggle("hidden", v !== view); });
     if (view === "activity") loadActivity();
     if (view === "driver") loadDriverView();
     if (view === "admin") loadAdmin();
@@ -49,8 +49,16 @@
       state.user = result.user; state.driver = result.driver;
       $("greeting").textContent = "Hello, " + (state.user.first_name || "there");
       $("roleLabel").textContent = ({ admin:"Administrator", driver:"Approved driver", driver_pending:"Driver application pending", passenger:"Passenger" })[state.user.role] || "WING FAST member";
-      if (["driver","driver_pending"].includes(state.user.role) || state.driver) document.querySelector('[data-view="driver"]').classList.remove("hidden");
-      if (state.user.role === "admin") document.querySelector('[data-view="admin"]').classList.remove("hidden");
+      const displayName = [state.user.first_name, state.user.last_name].filter(Boolean).join(" ") || state.user.full_name || "WING FAST User";
+      $("profileName").textContent = displayName;
+      $("profileAvatar").textContent = (displayName.trim()[0] || "W").toUpperCase();
+      $("profileUsername").textContent = state.user.username ? "@" + state.user.username.replace(/^@/,"") : "Telegram account";
+      $("profileRole").textContent = ({admin:"Admin",driver:"Driver",driver_pending:"Driver pending",passenger:"Passenger"})[state.user.role] || "WING FAST member";
+      $("profilePhone").textContent = state.user.phone || "Not added";
+      $("profileTelegramId").textContent = state.user.telegram_user_id || state.user.id || "—";
+      $("profileStatus").textContent = state.user.account_status || "Active";
+      if (["driver","driver_pending"].includes(state.user.role) || state.driver) $("profileDriverAction").classList.remove("hidden");
+      if (state.user.role === "admin") $("profileAdminAction").classList.remove("hidden");
       $("loading").classList.add("hidden"); $("errorPanel").classList.add("hidden"); $("appContent").classList.remove("hidden");
       if (!state.pickup) locate(false);
     } catch (e) { showError(e); }
@@ -173,8 +181,10 @@
     catch (e) { alert(e.message); }
   }
   document.addEventListener("click", (event) => {
-    const tab = event.target.closest(".tab");
+    const tab = event.target.closest(".bottom-nav .tab");
     if (tab) setView(tab.dataset.view);
+    const openView = event.target.closest("[data-open-view]");
+    if (openView) setView(openView.dataset.openView);
     const cancel = event.target.closest("[data-cancel]"); if (cancel) cancelRide(cancel.dataset.cancel);
     const accept = event.target.closest("[data-accept]"); if (accept) acceptRide(accept.dataset.accept);
     const approve = event.target.closest("[data-approve]"); if (approve) adminAction("/api/admin/drivers/" + encodeURIComponent(approve.dataset.approve) + "/approve");
@@ -225,6 +235,18 @@
       "ONLINE":"កំពុងអនឡាញ",
       "Ride":"កក់ដំណើរ",
       "Activity":"ប្រវត្តិដំណើរ",
+      "Profile":"ប្រវត្តិរូប",
+      "YOUR ACCOUNT":"គណនីរបស់អ្នក",
+      "Phone number":"លេខទូរស័ព្ទ",
+      "Telegram ID":"លេខសម្គាល់ Telegram",
+      "Account status":"ស្ថានភាពគណនី",
+      "Not added":"មិនទាន់បញ្ចូល",
+      "Active":"សកម្ម",
+      "Driver Center":"ផ្ទាំងអ្នកបើកបរ",
+      "Manage your driver account and ride requests.":"គ្រប់គ្រងគណនីអ្នកបើកបរ និងសំណើដំណើរ",
+      "Admin Panel":"ផ្ទាំងអ្នកគ្រប់គ្រង",
+      "Manage drivers and bookings.":"គ្រប់គ្រងអ្នកបើកបរ និងការកក់ដំណើរ",
+      "OPEN →":"បើក →",
       "Driver":"អ្នកបើកបរ",
       "Admin":"អ្នកគ្រប់គ្រង",
       "CAMBODIA SERVICE AREA":"តំបន់សេវាកម្មកម្ពុជា",
