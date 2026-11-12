@@ -12,16 +12,17 @@
   <div class="app-shell">
     <header class="topbar">
       <div class="brand"><span>WING <b>FAST</b></span></div>
-      <div class="top-actions"><select id="languageSelect" aria-label="Language" style="width:auto;height:36px;padding:0 8px;font-size:11px"><option value="km">🇰🇭 ខ្មែរ</option><option value="zh">🇨🇳 中文</option><option value="en">🇬🇧 English</option></select><button id="refreshBtn" class="icon-btn" aria-label="Refresh">↻</button></div>
+      <div class="top-actions"><button id="refreshBtn" class="icon-btn" aria-label="Refresh">↻</button></div>
     </header>
     <main>
       <section id="loading" class="panel center"><div class="loader"></div><p>Connecting to WING FAST…</p></section>
       <section id="errorPanel" class="panel hidden"><h2>Connection problem</h2><p id="errorText"></p><button class="btn primary" id="retryBtn">Try again</button></section>
       <section id="appContent" class="hidden">
         <nav class="bottom-nav" id="tabs" aria-label="Main navigation">
-          <button class="bottom-nav-item tab active" data-view="ride" type="button"><span class="nav-icon" aria-hidden="true">⌖</span><span>Ride</span></button>
-          <button class="bottom-nav-item tab" data-view="activity" type="button"><span class="nav-icon" aria-hidden="true">◷</span><span>Activity</span></button>
-          <button class="bottom-nav-item tab" data-view="profile" type="button"><span class="nav-icon" aria-hidden="true">◎</span><span>Profile</span></button>
+          <button class="bottom-nav-item tab active" data-view="ride" type="button"><i class="nav-icon" data-lucide="car-front" aria-hidden="true"></i><span>Ride</span></button>
+          <button class="bottom-nav-item tab" data-view="activity" type="button"><i class="nav-icon" data-lucide="history" aria-hidden="true"></i><span>Activity</span></button>
+          <button class="bottom-nav-item tab" data-view="profile" type="button"><i class="nav-icon" data-lucide="user-round" aria-hidden="true"></i><span>Profile</span></button>
+          <div class="nav-language-item"><i class="nav-icon" data-lucide="globe-2" aria-hidden="true"></i><select id="languageSelect" aria-label="Language"><option value="km">ខ្មែរ</option><option value="en">English</option><option value="zh">中文</option></select></div>
         </nav>
 
         <section id="rideView" class="view">
@@ -132,6 +133,7 @@
       </main>
     <footer><span>WING FAST</span><span>SAFE · SIMPLE · FAST</span></footer>
   </div>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>
