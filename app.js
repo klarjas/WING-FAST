@@ -60,6 +60,21 @@
   async function requestCurrentLocation(showMessage=true){if(!navigator.geolocation){if(showMessage)message("bookingMessage","GPS is not supported by this device.","error");return;}if(state.locationPermission==="denied"){if(showMessage)message("bookingMessage","Location permission is blocked in browser settings. Enable it once to continue.","error");return;}if(state.locationAsked&&state.locationPermission==="prompt"){if(showMessage)message("bookingMessage","Please allow location access in your browser settings.","error");return;}state.locationAsked=true;$("useCurrentLocation").textContent="RECENTERING…";navigator.geolocation.getCurrentPosition(pos=>{state.locationPermission="granted";const p={lat:pos.coords.latitude,lon:pos.coords.longitude};state.mapCandidate=p;if(state.map)state.map.setView([p.lat,p.lon],17);$("selectedCoordinates").textContent=p.lat.toFixed(5)+", "+p.lon.toFixed(5)+" · GPS";$("useCurrentLocation").textContent="RECENTER GPS";},err=>{if(err.code===1)state.locationPermission="denied";else if(err.code===2)state.locationPermission="unavailable";$("useCurrentLocation").textContent="USE MY GPS";if(showMessage)message("bookingMessage",err.code===1?"Location permission denied. Enable it in browser settings.":err.message||"Unable to get GPS location.","error");},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});}
   async function checkLocationPermission(){if(!navigator.permissions||!navigator.permissions.query)return;try{const p=await navigator.permissions.query({name:"geolocation"});state.locationPermission=p.state;p.onchange=()=>{state.locationPermission=p.state;};}catch(_){} }
 
+  function animateAppReveal() {
+    const view = document.querySelector("#rideView:not(.hidden)");
+    if (!view) return;
+    const items = [
+      ...Array.from(view.children).filter(el => !el.classList.contains("hidden")),
+      ...Array.from(view.querySelectorAll(".vehicle-option"))
+    ];
+    items.forEach((el, index) => {
+      el.classList.remove("anime-reveal");
+      el.style.animationDelay = (index * 105) + "ms";
+      void el.offsetWidth;
+      el.classList.add("anime-reveal");
+    });
+  }
+
   async function boot() {
     try {
       if (!tg && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") throw new Error("Please open WING FAST from its Telegram bot.");
@@ -76,6 +91,7 @@
       if (["driver","driver_pending"].includes(state.user.role) || state.driver) $("profileDriverAction").classList.remove("hidden");
       if (state.user.role === "admin") $("profileAdminAction").classList.remove("hidden");
       $("loading").classList.add("hidden"); $("errorPanel").classList.add("hidden"); $("appContent").classList.remove("hidden");
+      animateAppReveal();
       checkLocationPermission();
       loadPromotion();
     } catch (e) { showError(e); }
@@ -300,7 +316,7 @@
       "No drivers currently online":"មិនមានអ្នកបើកបរអនឡាញទេ",
       "Your driver is on the way":"អ្នកបើកបរកំពុងធ្វើដំណើរមករកអ្នក",
       "CHOOSE YOUR RIDE":"ជ្រើសរើសការធ្វើដំណើរ","Choose your vehicle":"ជ្រើសរើសយានជំនិះ","Sedan":"សេដង់","Tuk-Tuk":"តុកតុក","TukTuk":"តុកតុក","Motorcycle":"ម៉ូតូ",
-      "Connecting to WING FAST…":"កំពុងភ្ជាប់ទៅ WING FAST…",
+      "Connecting to WING FAST…":"កំពុងភ្ជាប់ទៅ WING FAST…","PLEASE WAIT":"សូមរង់ចាំ",
       "Connection problem":"មានបញ្ហាក្នុងការតភ្ជាប់",
       "Try again":"ព្យាយាមម្ដងទៀត",
       "Administrator":"អ្នកគ្រប់គ្រង",
