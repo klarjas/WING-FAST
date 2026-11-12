@@ -386,16 +386,29 @@
     }
     return output;
   };
+  const originalText = new WeakMap();
+  const originalAttributes = new WeakMap();
   function translateElement(root) {
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
-    for (const node of nodes) node.nodeValue = textMap(node.nodeValue);
-    root.querySelectorAll?.("[placeholder],[aria-label],[title]").forEach((el) => {
+    for (const node of nodes) {
+      if (!originalText.has(node)) originalText.set(node, node.nodeValue);
+      node.nodeValue = textMap(originalText.get(node));
+    }
+    const elements = [];
+    if (root.nodeType === Node.ELEMENT_NODE && root.matches?.("[placeholder],[aria-label],[title]")) elements.push(root);
+    root.querySelectorAll?.("[placeholder],[aria-label],[title]").forEach((el) => elements.push(el));
+    for (const el of elements) {
+      let originals = originalAttributes.get(el);
+      if (!originals) { originals = {}; originalAttributes.set(el, originals); }
       for (const attr of ["placeholder","aria-label","title"]) {
-        if (el.hasAttribute(attr)) el.setAttribute(attr, textMap(el.getAttribute(attr)));
+        if (el.hasAttribute(attr)) {
+          if (!(attr in originals)) originals[attr] = el.getAttribute(attr);
+          el.setAttribute(attr, textMap(originals[attr]));
+        }
       }
-    });
+    }
   }
   function setLanguage(language) {
     currentLanguage = ["km","zh","en"].includes(language) ? language : "km";
