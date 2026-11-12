@@ -307,3 +307,12 @@ main{
 @media(min-width:761px){
   .app-shell{border-left:1px solid #E9EDF2;border-right:1px solid #E9EDF2}
 }
+
+
+/* WING FAST — balanced Mini App window width (not edge-to-edge desktop) */
+.app-shell{max-width:600px}
+.bottom-nav{max-width:600px}
+@media(max-width:600px){
+  .app-shell{max-width:100%;padding-left:14px;padding-right:14px}
+  .bottom-nav{max-width:100%}
+}
