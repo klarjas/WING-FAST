@@ -130,7 +130,7 @@ def clean(value, maximum, label):
 
 class DriverApplication(BaseModel):
     phone: str = Field(min_length=6, max_length=30)
-    vehicle_type: str = Field(pattern="^(car|suv|tuk_tuk|motorbike)$")
+    vehicle_type: str = Field(pattern="^(car|suv|tuk_tuk|motorbike|van)$")
     vehicle_model: str = Field(min_length=2, max_length=100)
     plate_number: str = Field(min_length=2, max_length=30)
 
@@ -147,7 +147,7 @@ class BookingCreate(BaseModel):
     destination_text: str = Field(min_length=2, max_length=180)
     destination_lat: Optional[float] = Field(default=None, ge=-90, le=90)
     destination_lon: Optional[float] = Field(default=None, ge=-180, le=180)
-    vehicle_type: str = Field(default="all", pattern="^(all|car|suv|tuk_tuk|motorbike)$")
+    vehicle_type: str = Field(default="all", pattern="^(all|car|suv|tuk_tuk|motorbike|van)$")
     payment_method: str = Field(default="cash", pattern="^(cash|digital)$")
     distance_mode: str = Field(default="road", pattern="^(road|map)$")
     estimated_distance_km: Optional[float] = Field(default=None, ge=0, le=10000)
