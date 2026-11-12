@@ -201,3 +201,45 @@ footer{border-color:#ffffff12;color:#646b76}
   .vehicle-option img{height:108px}
 }
 @media(max-width:390px){.vehicle-option{flex-basis:116px;min-height:150px}.vehicle-option img{height:100px}.vehicle-option span{font-size:10px}}
+
+
+/* WING FAST — Premium Light Theme */
+:root{color-scheme:light;--bg:#F5F7FA;--panel:#FFFFFF;--panel2:#F0F2F5;--line:#E4E8EF;--white:#202631;--muted:#737D8C;--yellow:#E9AE00;--green:#168A57;--red:#D94855}
+html,body,.app-shell,main{background:#F5F7FA!important;color:#202631!important}
+body{background:#F5F7FA!important;color:#202631!important}
+.topbar{border-bottom-color:#E4E8EF}
+.brand{color:#202631}.brand b{color:#D99E00}.brand-mark{border-color:#E9AE00;color:#D99E00;background:#FFF9E8}
+.icon-btn{background:#fff;border-color:#E2E6ED;color:#303846;box-shadow:0 2px 8px #1822300a}
+.welcome h1,.section-heading h2,h3{color:#202631}
+.eyebrow{color:#B98500}
+.status-pill{color:#168A57;border-color:#BFE8D2;background:#EFFAF4}
+.status-pill i{background:#168A57}
+.bottom-nav{background:#FFFFFFF2;border-top-color:#E4E8EF;box-shadow:0 -5px 22px #26354a12;backdrop-filter:blur(18px)}
+.bottom-nav-item{color:#7B8491}.bottom-nav-item.active{color:#A87500;background:#FFF6D9}
+.panel,.ride-card,.driver-card,.admin-card,.stat{background:#FFFFFF;border-color:#E6EAF0;box-shadow:0 5px 18px #2432470A}
+.vehicle-option{background:#FFFFFF;border-color:#E6EAF0;color:#343D4B;box-shadow:0 3px 12px #2432470A}
+.vehicle-option.active{border-color:#E9AE00;background:#FFFAEB;color:#9A6B00;box-shadow:inset 0 0 0 1px #E9AE0055,0 4px 14px #E9AE0018}
+.vehicle-option img{height:138px;background:#FFFFFF;border-radius:10px;object-fit:contain}
+.vehicle-option span{color:inherit}
+input,select,.location-row{background:#FFFFFF;border-color:#DDE3EB;color:#202631}
+input::placeholder{color:#9AA3AF}
+label{color:#566171}
+.location-row input{background:transparent}
+.btn.primary{background:#F2B900;color:#201A08;box-shadow:0 4px 12px #DCA90026}
+.btn.secondary,.mini-btn{background:#F2F4F7;border-color:#E0E5EC;color:#3F4958}
+.mini-btn.good{color:#9A6B00;border-color:#E9D28C;background:#FFFAEA}
+.empty-state{border-color:#DDE3EB;color:#778292}
+.profile-avatar{background:#FFF6D9;border-color:#E9D28C;color:#A87500}
+.profile-detail{border-bottom-color:#EDF0F4}
+footer{border-top-color:#E4E8EF;color:#8A93A0}
+#liveMap{background:#E9EEF3}
+#liveMap .leaflet-control-zoom a{background:#fff;color:#303846;border-color:#DDE3EB}
+.map-label{background:#FFFFFFE8;color:#3F4958;box-shadow:0 2px 8px #24324718}
+.map-mode{background:#FFFFFF;color:#465161;border-color:#DDE3EB}
+.map-mode.active{background:#F2B900;color:#201A08;border-color:#E9AE00}
+.location-modal-card{background:#FFFFFF;color:#202631}
+.location-modal{background:#17202b66}
+.location-modal-head,.location-modal-footer{border-color:#E7EBF0}
+@media(min-width:600px){.bottom-nav{border-color:#E4E8EF}}
+@media(max-width:600px){.vehicle-option{flex-basis:145px;min-height:184px}.vehicle-option img{height:142px}}
+@media(max-width:390px){.vehicle-option{flex-basis:136px;min-height:176px}.vehicle-option img{height:134px}}
