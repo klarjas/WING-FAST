@@ -149,6 +149,8 @@ class BookingCreate(BaseModel):
     destination_lon: Optional[float] = Field(default=None, ge=-180, le=180)
     vehicle_type: str = Field(default="all", pattern="^(all|car|suv|tuk_tuk|motorbike)$")
     payment_method: str = Field(default="cash", pattern="^(cash|digital)$")
+    distance_mode: str = Field(default="road", pattern="^(road|map)$")
+    estimated_distance_km: Optional[float] = Field(default=None, ge=0, le=10000)
 
 
 class LocationUpdate(BaseModel):
@@ -289,13 +291,13 @@ def create_booking(payload: BookingCreate, authorization: Optional[str] = Header
             INSERT INTO public.bookings (
                 passenger_id, pickup_latitude, pickup_longitude, pickup_address,
                 destination_latitude, destination_longitude, destination_address,
-                vehicle_type, payment_method, status
-            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,'requested')
+                vehicle_type, payment_method, estimated_distance_km, status
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'requested')
             RETURNING id
         """, (user["id"], payload.pickup_lat, payload.pickup_lon,
               payload.pickup_text.strip(), payload.destination_lat, payload.destination_lon,
               clean(payload.destination_text, 180, "Destination"),
-              payload.vehicle_type, payload.payment_method)).fetchone()
+              payload.vehicle_type, payload.payment_method, payload.estimated_distance_km)).fetchone()
     return {"ok": True, "booking_id": str(row["id"]), "status": "searching"}
 
 
