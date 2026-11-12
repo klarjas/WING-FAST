@@ -199,6 +199,15 @@
 (() => {
   const dictionaries = {
     km: {
+      "SET PICKUP":"កំណត់ទីតាំងទទួល",
+      "SET DESTINATION":"កំណត់គោលដៅ",
+      "USE LINK":"ប្រើ Link",
+      "Paste Google Maps link (optional)":"បិទភ្ជាប់ Link Google Maps (ជាជម្រើស)",
+      "Finding nearby drivers…":"កំពុងស្វែងរកអ្នកបើកបរនៅជិត…",
+      "Tap the map to set passenger pickup":"ចុចលើផែនទីដើម្បីកំណត់ទីតាំងទទួល",
+      "Tap the map to set destination":"ចុចលើផែនទីដើម្បីកំណត់គោលដៅ",
+      "No drivers currently online":"មិនមានអ្នកបើកបរអនឡាញទេ",
+      "Your driver is on the way":"អ្នកបើកបរកំពុងធ្វើដំណើរមករកអ្នក",
       "Connecting to WING FAST…":"កំពុងភ្ជាប់ទៅ WING FAST…",
       "Connection problem":"មានបញ្ហាក្នុងការតភ្ជាប់",
       "Try again":"ព្យាយាមម្ដងទៀត",
@@ -293,6 +302,15 @@
       "Block this driver and account?":"តើអ្នកចង់បិទអ្នកបើកបរ និងគណនីនេះមែនទេ?"
     },
     zh: {
+      "SET PICKUP":"设置上车地点",
+      "SET DESTINATION":"设置目的地",
+      "USE LINK":"使用链接",
+      "Paste Google Maps link (optional)":"粘贴 Google Maps 链接（可选）",
+      "Finding nearby drivers…":"正在寻找附近司机…",
+      "Tap the map to set passenger pickup":"点击地图设置上车地点",
+      "Tap the map to set destination":"点击地图设置目的地",
+      "No drivers currently online":"目前没有司机在线",
+      "Your driver is on the way":"司机正在前往您的位置",
       "Connecting to WING FAST…":"正在连接 WING FAST…",
       "Connection problem":"连接出现问题",
       "Try again":"重试",
