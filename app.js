@@ -4,9 +4,9 @@
   if (tg) {
     tg.ready();
     try {
-      tg.setBackgroundColor("#F5F7FA");
-      tg.setHeaderColor("#F5F7FA");
-      if (typeof tg.setBottomBarColor === "function") tg.setBottomBarColor("#FFFFFF");
+      tg.setBackgroundColor("#08080A");
+      tg.setHeaderColor("#08080A");
+      if (typeof tg.setBottomBarColor === "function") tg.setBottomBarColor("#111216");
       // Keep the normal Telegram Mini App window; do not force fullscreen.
       if (typeof tg.expand === "function") tg.expand();
     } catch (error) {
@@ -42,7 +42,7 @@
   }
 
   function mapIcon(type){const h=type==="driver"?'<div class="driver-marker">🚕</div>':type==="pickup"?'<div class="pickup-marker"></div>':'<div class="destination-marker"></div>';return L.divIcon({html:h,className:"",iconSize:type==="driver"?[34,34]:[18,18],iconAnchor:type==="driver"?[17,17]:[9,9]});}
-  function initMap(){if(state.map||!window.L)return;state.map=L.map("liveMap",{zoomControl:true}).setView([11.5564,104.9282],13);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(state.map);state.map.on("moveend",()=>{const c=state.map.getCenter();state.mapCandidate={lat:c.lat,lon:c.lng};$("selectedCoordinates").textContent=c.lat.toFixed(5)+", "+c.lng.toFixed(5);});if(state.pickup)setPickup(state.pickup,$("pickupText").value);if(state.destination)setDestination(state.destination,$("destination").value);setTimeout(()=>state.map&&state.map.invalidateSize(),250);}
+  function initMap(){if(state.map||!window.L)return;state.map=L.map("liveMap",{zoomControl:true}).setView([11.5564,104.9282],13);L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{maxZoom:20,attribution:'&copy; OpenStreetMap &copy; CARTO'}).addTo(state.map);state.map.on("moveend",()=>{const c=state.map.getCenter();state.mapCandidate={lat:c.lat,lon:c.lng};$("selectedCoordinates").textContent=c.lat.toFixed(5)+", "+c.lng.toFixed(5);});if(state.pickup)setPickup(state.pickup,$("pickupText").value);if(state.destination)setDestination(state.destination,$("destination").value);setTimeout(()=>state.map&&state.map.invalidateSize(),250);}
   function setPickup(p,label){state.pickup={lat:+p.lat,lon:+p.lon};$("pickupText").value=label||state.pickup.lat.toFixed(5)+", "+state.pickup.lon.toFixed(5);if(state.map){if(state.pickupMarker)state.pickupMarker.setLatLng([p.lat,p.lon]);else state.pickupMarker=L.marker([p.lat,p.lon],{icon:mapIcon("pickup")}).addTo(state.map);}}
   function setDestination(p,label){state.destination={lat:+p.lat,lon:+p.lon};$("destination").value=label||state.destination.lat.toFixed(5)+", "+state.destination.lon.toFixed(5);if(state.map){if(state.destinationMarker)state.destinationMarker.setLatLng([p.lat,p.lon]);else state.destinationMarker=L.marker([p.lat,p.lon],{icon:mapIcon("destination")}).addTo(state.map);}}
   function mapMode(mode){state.mapMode=mode;document.querySelectorAll("[data-map-mode]").forEach(x=>x.classList.toggle("active",x.dataset.mapMode===mode));$("mapStatus").textContent=mode==="pickup"?"Tap the map to set passenger pickup":"Tap the map to set destination";}
