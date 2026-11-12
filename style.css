@@ -647,3 +647,52 @@ main,#appContent,footer{max-width:620px;margin-left:auto;margin-right:auto}
   .app-shell{min-height:100vh!important;min-height:100dvh!important}
 }
 /* Retain the premium dark-green cards and floating navigation on the light canvas. */
+
+
+/* WING FAST — light vehicle selection panel matching the full app canvas */
+.vehicle-picker{
+  background:#F5F7FA!important;
+  border:1px solid #E3E8EF!important;
+  box-shadow:0 8px 24px rgba(31,45,61,.055)!important;
+}
+.vehicle-picker:after{border-color:rgba(37,99,75,.09);box-shadow:0 0 0 22px rgba(37,99,75,.025),0 0 0 46px rgba(37,99,75,.015)}
+.vehicle-picker .eyebrow{color:#64748B!important}
+.vehicle-picker .section-heading h2{color:#202631!important}
+.vehicle-picker .step{color:#64748B!important;background:#FFFFFF!important;border-color:#E1E6ED!important}
+.vehicle-picker .vehicle-option{
+  background:#E9EDF2!important;
+  border:1px solid #DCE2E9!important;
+  color:#334155!important;
+  box-shadow:0 2px 7px rgba(31,45,61,.035)!important;
+}
+.vehicle-picker .vehicle-option svg{color:#64748B!important;filter:none!important}
+.vehicle-picker .vehicle-option span{color:#334155!important}
+.vehicle-picker .vehicle-option.active{
+  background:#FFFFFF!important;
+  border:1.5px solid #279B70!important;
+  color:#147A55!important;
+  box-shadow:0 0 0 2px rgba(39,155,112,.09),0 6px 16px rgba(31,45,61,.08)!important;
+}
+.vehicle-picker .vehicle-option.active svg{color:#16845C!important;filter:none!important}
+.vehicle-picker .vehicle-option.active span{color:#116B4B!important}
+
+/* Language selector: clearly outlined capsule around the selected language */
+.nav-language-item{
+  background:rgba(255,255,255,.10)!important;
+  border-color:rgba(255,255,255,.17)!important;
+}
+.nav-language-item select{
+  width:auto!important;
+  max-width:100%;
+  min-width:76px;
+  padding:3px 9px!important;
+  border:1px solid rgba(184,243,107,.58)!important;
+  border-radius:999px!important;
+  background:rgba(255,255,255,.07)!important;
+  color:#F4FBF8!important;
+  text-align:center;
+  text-align-last:center;
+  font-size:10px;
+  font-weight:700;
+}
+.nav-language-item select option{background:#13201E!important;color:#F4FBF8!important}
