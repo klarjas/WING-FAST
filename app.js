@@ -3,7 +3,7 @@
   const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
   if (tg) { tg.ready(); tg.expand(); try { tg.setBackgroundColor("#000000"); tg.setHeaderColor("#000000"); } catch (_) {} }
   const $ = (id) => document.getElementById(id);
-  const state = { user:null,driver:null,pickup:null,destination:null,map:null,driverMarkers:new Map(),pickupMarker:null,destinationMarker:null,routeLine:null,mapMode:"pickup",liveTimer:null,watchId:null,locationTimer:null };
+  const state = { user:null,driver:null,pickup:null,destination:null,map:null,driverMarkers:new Map(),pickupMarker:null,destinationMarker:null,routeLine:null,selectedRouteLine:null,mapMode:"pickup",pickerMode:"pickup",mapCandidate:null,distanceMode:"road",distanceKm:null,liveTimer:null,watchId:null,locationTimer:null,locationPermission:"unknown",locationAsked:false };
   const authHeaders = () => ({ "Content-Type": "application/json", "Authorization": "tma " + (tg ? tg.initData : "") });
   async function api(path, options = {}) {
     const response = await fetch(path, { ...options, headers: { ...authHeaders(), ...(options.headers || {}) } });
@@ -31,7 +31,7 @@
   }
 
   function mapIcon(type){const h=type==="driver"?'<div class="driver-marker">🚕</div>':type==="pickup"?'<div class="pickup-marker"></div>':'<div class="destination-marker"></div>';return L.divIcon({html:h,className:"",iconSize:type==="driver"?[34,34]:[18,18],iconAnchor:type==="driver"?[17,17]:[9,9]});}
-  function initMap(){if(state.map||!window.L)return;state.map=L.map("liveMap").setView([11.5564,104.9282],13);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(state.map);state.map.on("click",e=>{const p={lat:e.latlng.lat,lon:e.latlng.lng};state.mapMode==="pickup"?setPickup(p,"Map selection"):setDestination(p,"Map selection");});if(state.pickup)setPickup(state.pickup,$("pickupText").value);if(state.destination)setDestination(state.destination,$("destination").value);setTimeout(()=>state.map&&state.map.invalidateSize(),300);}
+  function initMap(){if(state.map||!window.L)return;state.map=L.map("liveMap",{zoomControl:true}).setView([11.5564,104.9282],13);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(state.map);state.map.on("moveend",()=>{const c=state.map.getCenter();state.mapCandidate={lat:c.lat,lon:c.lng};$("selectedCoordinates").textContent=c.lat.toFixed(5)+", "+c.lng.toFixed(5);updateDistance();});if(state.pickup)setPickup(state.pickup,$("pickupText").value);if(state.destination)setDestination(state.destination,$("destination").value);setTimeout(()=>state.map&&state.map.invalidateSize(),250);}
   function setPickup(p,label){state.pickup={lat:+p.lat,lon:+p.lon};$("pickupText").value=label||state.pickup.lat.toFixed(5)+", "+state.pickup.lon.toFixed(5);if(state.map){if(state.pickupMarker)state.pickupMarker.setLatLng([p.lat,p.lon]);else state.pickupMarker=L.marker([p.lat,p.lon],{icon:mapIcon("pickup")}).addTo(state.map);}}
   function setDestination(p,label){state.destination={lat:+p.lat,lon:+p.lon};$("destination").value=label||state.destination.lat.toFixed(5)+", "+state.destination.lon.toFixed(5);if(state.map){if(state.destinationMarker)state.destinationMarker.setLatLng([p.lat,p.lon]);else state.destinationMarker=L.marker([p.lat,p.lon],{icon:mapIcon("destination")}).addTo(state.map);}}
   function mapMode(mode){state.mapMode=mode;document.querySelectorAll("[data-map-mode]").forEach(x=>x.classList.toggle("active",x.dataset.mapMode===mode));$("mapStatus").textContent=mode==="pickup"?"Tap the map to set passenger pickup":"Tap the map to set destination";}
@@ -39,8 +39,15 @@
   function useMapLink(){const p=coordsFromMapLink($("googleMapsLink").value.trim());if(!p){message("bookingMessage","Could not read coordinates. Paste a Google Maps URL containing coordinates, or latitude,longitude.","error");return;}setDestination(p,"Google Maps location");mapMode("destination");state.map.setView([p.lat,p.lon],16);}
   async function refreshDrivers(){if(!state.map)return;try{const data=await api("/api/drivers/live"),ids=new Set();data.items.forEach(d=>{ids.add(d.driver_id);const p=[+d.latitude,+d.longitude];let m=state.driverMarkers.get(d.driver_id);if(!m){m=L.marker(p,{icon:mapIcon("driver")}).addTo(state.map);state.driverMarkers.set(d.driver_id,m);}else m.setLatLng(p);m.bindPopup("<b>"+escapeHtml(d.vehicle_model||"WING FAST Driver")+"</b><br>"+escapeHtml(d.plate_number||""));});for(const [id,m] of state.driverMarkers)if(!ids.has(id)){state.map.removeLayer(m);state.driverMarkers.delete(id);}$("driverCount").textContent=data.items.length+" drivers online · refresh 5 sec";if(!$("mapStatus").textContent.startsWith("Tap the map"))$("mapStatus").textContent=data.items.length?"Live drivers on map":"No drivers currently online";await refreshDriverRoute();}catch(_){$("driverCount").textContent="Waiting for live driver locations…";}}
   async function refreshDriverRoute(){try{const data=await api("/api/bookings/mine"),b=data.items.find(x=>["accepted","arrived","in_progress"].includes(x.status)&&x.driver_lat!=null);if(!b||!state.pickup){if(state.routeLine){state.map.removeLayer(state.routeLine);state.routeLine=null;}return;}const a=[+b.driver_lat,+b.driver_lon],z=[+b.pickup_lat,+b.pickup_lon],u="https://router.project-osrm.org/route/v1/driving/"+a[1]+","+a[0]+";"+z[1]+","+z[0]+"?overview=full&geometries=geojson",r=await(await fetch(u)).json();if(!r.routes||!r.routes[0])return;const pts=r.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);if(state.routeLine)state.routeLine.setLatLngs(pts);else state.routeLine=L.polyline(pts,{color:"#FFC928",weight:5,opacity:.9}).addTo(state.map);$("mapStatus").textContent="Your driver is on the way";}catch(_){}}
-  function startLiveMap(){if(!$("vehicleType").value)return;$("rideMapStage").classList.remove("hidden");initMap();if(!state.map)return;setTimeout(()=>state.map.invalidateSize(),150);refreshDrivers();if(state.liveTimer)clearInterval(state.liveTimer);state.liveTimer=setInterval(refreshDrivers,5000);}
-  function chooseVehicle(type){$("vehicleType").value=type;document.querySelectorAll("[data-vehicle-choice]").forEach(btn=>{const active=btn.dataset.vehicleChoice===type;btn.classList.toggle("active",active);btn.setAttribute("aria-pressed",String(active));});startLiveMap();}
+  function startLiveMap(){if(!$("vehicleType").value)return;initMap();if(!state.map)return;setTimeout(()=>state.map.invalidateSize(),150);refreshDrivers();if(state.liveTimer)clearInterval(state.liveTimer);state.liveTimer=setInterval(refreshDrivers,5000);}
+  function chooseVehicle(type){$("vehicleType").value=type;document.querySelectorAll("[data-vehicle-choice]").forEach(btn=>{const active=btn.dataset.vehicleChoice===type;btn.classList.toggle("active",active);btn.setAttribute("aria-pressed",String(active));});}
+  async function openLocationPicker(mode){if(!$("vehicleType").value){message("bookingMessage","Please choose a vehicle first.","error");return;}state.pickerMode=mode;state.mapMode=mode;$("locationModalTitle").textContent=mode==="pickup"?"Choose pickup point":"Choose destination";$("locationModalHint").textContent=mode==="pickup"?"The center pin marks your real pickup location. Move the map to adjust.":"Move the map until the center pin marks your destination."; $("locationPicker").classList.remove("hidden");initMap();if(!state.map)return;startLiveMap();const existing=mode==="pickup"?state.pickup:state.destination;if(existing){state.map.setView([existing.lat,existing.lon],16);}else if(mode==="pickup"){await requestCurrentLocation(false);}else if(state.pickup){state.map.setView([state.pickup.lat,state.pickup.lon],14);}setTimeout(()=>{state.map.invalidateSize();const c=state.map.getCenter();state.mapCandidate={lat:c.lat,lon:c.lng};$("selectedCoordinates").textContent=c.lat.toFixed(5)+", "+c.lng.toFixed(5);updateDistance();},180);}
+  function closeLocationPicker(){ $("locationPicker").classList.add("hidden"); }
+  function confirmLocationPicker(){const p=state.mapCandidate;if(!p)return;if(state.pickerMode==="pickup")setPickup(p,"GPS / Map: "+p.lat.toFixed(5)+", "+p.lon.toFixed(5));else setDestination(p,"Map: "+p.lat.toFixed(5)+", "+p.lon.toFixed(5));closeLocationPicker();updateDistance();}
+  function haversine(a,b){const rad=x=>x*Math.PI/180,R=6371,dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon),q=Math.sin(dLat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(q));}
+  async function updateDistance(){if(!state.pickup||!state.destination){$("distanceInfo").textContent="Choose pickup and destination to calculate distance.";state.distanceKm=null;return;}if(state.distanceMode==="map"){state.distanceKm=haversine(state.pickup,state.destination);$("distanceInfo").textContent="Map distance: "+state.distanceKm.toFixed(2)+" km (straight line).";return;}try{const a=state.pickup,b=state.destination,url="https://router.project-osrm.org/route/v1/driving/"+a.lon+","+a.lat+";"+b.lon+","+b.lat+"?overview=full&geometries=geojson";$("distanceInfo").textContent="Calculating actual road distance…";const data=await(await fetch(url)).json();if(!data.routes||!data.routes[0])throw new Error("No driving route");state.distanceKm=data.routes[0].distance/1000;const pts=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);if(state.selectedRouteLine)state.map.removeLayer(state.selectedRouteLine);state.selectedRouteLine=L.polyline(pts,{color:"#FFC928",weight:4,opacity:.9,dashArray:"7 6"}).addTo(state.map);$("distanceInfo").textContent="Actual driving distance: "+state.distanceKm.toFixed(2)+" km."; }catch(_){state.distanceKm=null;$("distanceInfo").textContent="Could not calculate road route. Try map distance.";}}
+  async function requestCurrentLocation(showMessage=true){if(!navigator.geolocation){if(showMessage)message("bookingMessage","GPS is not supported by this device.","error");return;}if(state.locationPermission==="denied"){if(showMessage)message("bookingMessage","Location permission is blocked in browser settings. Enable it once to continue.","error");return;}if(state.locationAsked&&state.locationPermission==="prompt"){if(showMessage)message("bookingMessage","Please allow location access in your browser settings.","error");return;}state.locationAsked=true;$("useCurrentLocation").textContent="GETTING GPS…";navigator.geolocation.getCurrentPosition(pos=>{state.locationPermission="granted";const p={lat:pos.coords.latitude,lon:pos.coords.longitude};state.mapCandidate=p;if(state.map)state.map.setView([p.lat,p.lon],17);$("selectedCoordinates").textContent=p.lat.toFixed(5)+", "+p.lon.toFixed(5)+" · GPS";$("useCurrentLocation").textContent="GPS LOCATION READY";},err=>{if(err.code===1)state.locationPermission="denied";else if(err.code===2)state.locationPermission="unavailable";$("useCurrentLocation").textContent="USE MY GPS";if(showMessage)message("bookingMessage",err.code===1?"Location permission denied. Enable it in browser settings.":err.message||"Unable to get GPS location.","error");},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});}
+  async function checkLocationPermission(){if(!navigator.permissions||!navigator.permissions.query)return;try{const p=await navigator.permissions.query({name:"geolocation"});state.locationPermission=p.state;p.onchange=()=>{state.locationPermission=p.state;};}catch(_){} }
 
   async function boot() {
     try {
@@ -60,28 +67,10 @@
       if (["driver","driver_pending"].includes(state.user.role) || state.driver) $("profileDriverAction").classList.remove("hidden");
       if (state.user.role === "admin") $("profileAdminAction").classList.remove("hidden");
       $("loading").classList.add("hidden"); $("errorPanel").classList.add("hidden"); $("appContent").classList.remove("hidden");
-      if (!state.pickup) locate(false);
+      checkLocationPermission();
     } catch (e) { showError(e); }
   }
-  function locate(showAlert = true) {
-    if (!navigator.geolocation) { if (showAlert) message("bookingMessage", "GPS is not supported by this device.", "error"); return; }
-    $("locateBtn").textContent = "WAIT…";
-    navigator.geolocation.getCurrentPosition((pos) => {
-      setPickup({lat:pos.coords.latitude,lon:pos.coords.longitude},pos.coords.latitude.toFixed(5)+", "+pos.coords.longitude.toFixed(5));
-      $("locateBtn").textContent = "UPDATED";
-      if (showAlert) message("bookingMessage", "Pickup location updated.", "success");
-    }, (err) => {
-      $("locateBtn").textContent = "LOCATE";
-      if (showAlert) message("bookingMessage", err.message || "Location permission was not granted.", "error");
-      if (tg && typeof tg.requestLocation === "function") {
-        try { tg.requestLocation((location) => {
-          if (location && Number.isFinite(location.latitude) && Number.isFinite(location.longitude)) {
-            setPickup({lat:location.latitude,lon:location.longitude},location.latitude.toFixed(5)+", "+location.longitude.toFixed(5));
-          }
-        }); } catch (_) {}
-      }
-    }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 15000 });
-  }
+  function locate(){openLocationPicker("pickup");}
   async function bookRide() {
     const destination = $("destination").value.trim();
     if (!state.pickup) { message("bookingMessage", "Please share your pickup location first.", "error"); return; }
@@ -90,10 +79,10 @@
     try {
       const result = await api("/api/bookings", { method:"POST", body: JSON.stringify({
         pickup_lat: state.pickup.lat, pickup_lon: state.pickup.lon, pickup_text: $("pickupText").value,
-        destination_text: destination, destination_lat:state.destination?state.destination.lat:null, destination_lon:state.destination?state.destination.lon:null, vehicle_type:$("vehicleType").value, payment_method:$("payment").value
+        destination_text: destination, destination_lat:state.destination?state.destination.lat:null, destination_lon:state.destination?state.destination.lon:null, vehicle_type:$("vehicleType").value, payment_method:$("payment").value, distance_mode:state.distanceMode, estimated_distance_km:state.distanceKm
       })});
       message("bookingMessage", "Ride request created: " + result.booking_id, "success");
-      $("destination").value="";state.destination=null;if(state.destinationMarker){state.map.removeLayer(state.destinationMarker);state.destinationMarker=null;}
+      $("destination").value="";state.destination=null;state.distanceKm=null;if(state.destinationMarker){state.map.removeLayer(state.destinationMarker);state.destinationMarker=null;}
     } catch (e) { message("bookingMessage", e.message, "error"); }
     finally { btn.disabled = false; btn.innerHTML = 'FIND A DRIVER <span>→</span>'; }
   }
@@ -191,11 +180,18 @@
     const reject = event.target.closest("[data-reject]"); if (reject) adminAction("/api/admin/drivers/" + encodeURIComponent(reject.dataset.reject) + "/reject");
     const block = event.target.closest("[data-block]"); if (block && confirm("Block this driver and account?")) adminAction("/api/admin/drivers/" + encodeURIComponent(block.dataset.block) + "/block");
   });
-  $("locateBtn").addEventListener("click",()=>locate(true));
-  document.querySelectorAll("[data-map-mode]").forEach(x=>x.addEventListener("click",()=>mapMode(x.dataset.mapMode)));
+  $("locateBtn").addEventListener("click",()=>openLocationPicker("pickup"));
+  $("pickupText").addEventListener("click",()=>openLocationPicker("pickup"));
+  $("destination").addEventListener("click",()=>openLocationPicker("destination"));
+  $("chooseDestinationBtn").addEventListener("click",()=>openLocationPicker("destination"));
+  $("closeLocationPicker").addEventListener("click",closeLocationPicker);
+  $("cancelLocationPicker").addEventListener("click",closeLocationPicker);
+  $("confirmLocationPicker").addEventListener("click",confirmLocationPicker);
+  $("useCurrentLocation").addEventListener("click",()=>requestCurrentLocation(true));
+  $("distanceMode").addEventListener("change",e=>{state.distanceMode=e.target.value;updateDistance();});
   document.querySelectorAll("[data-vehicle-choice]").forEach(x=>x.addEventListener("click",()=>chooseVehicle(x.dataset.vehicleChoice)));
   $("useMapLinkBtn").addEventListener("click",useMapLink);
-  $("destination").addEventListener("change",()=>{const p=coordsFromMapLink($("destination").value);if(p)setDestination(p,$("destination").value);});
+  $("destination").addEventListener("change",()=>{const p=coordsFromMapLink($("destination").value);if(p){state.mapCandidate=p;setDestination(p,$("destination").value);}});
   $("bookBtn").addEventListener("click", bookRide);
   $("applyDriverBtn").addEventListener("click", applyDriver);
   $("shareLocationBtn").addEventListener("click", startLocation);
