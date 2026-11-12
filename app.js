@@ -108,7 +108,45 @@
   function confirmLocationPicker(){const p=state.mapCandidate;if(!p)return;if(state.pickerMode==="pickup")setPickup(p,"GPS / Map: "+p.lat.toFixed(5)+", "+p.lon.toFixed(5));else setDestination(p,"Map: "+p.lat.toFixed(5)+", "+p.lon.toFixed(5));closeLocationPicker();updateDistance();}
   function haversine(a,b){const rad=x=>x*Math.PI/180,R=6371,dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon),q=Math.sin(dLat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(q));}
   async function updateDistance(){if(!state.pickup||!state.destination){$("distanceInfo").textContent="Choose pickup and destination to calculate distance.";state.distanceKm=null;return;}if(state.distanceMode==="map"){state.distanceKm=haversine(state.pickup,state.destination);$("distanceInfo").textContent="Map distance: "+state.distanceKm.toFixed(2)+" km (straight line).";return;}try{const a=state.pickup,b=state.destination,url="https://router.project-osrm.org/route/v1/driving/"+a.lon+","+a.lat+";"+b.lon+","+b.lat+"?overview=full&geometries=geojson";$("distanceInfo").textContent="Calculating actual road distance…";const data=await(await fetch(url)).json();if(!data.routes||!data.routes[0])throw new Error("No driving route");state.distanceKm=data.routes[0].distance/1000;const pts=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);if(state.selectedRouteLine)state.map.removeLayer(state.selectedRouteLine);state.selectedRouteLine=L.polyline(pts,{color:"#FFC928",weight:4,opacity:.9,dashArray:"7 6"}).addTo(state.map);$("distanceInfo").textContent="Actual driving distance: "+state.distanceKm.toFixed(2)+" km."; }catch(_){state.distanceKm=null;$("distanceInfo").textContent="Could not calculate road route. Try map distance.";}}
-  async function requestCurrentLocation(showMessage=true){if(!navigator.geolocation){if(showMessage)message("bookingMessage","GPS is not supported by this device.","error");return;}if(state.locationPermission==="denied"){if(showMessage)message("bookingMessage","Location permission is blocked in browser settings. Enable it once to continue.","error");return;}if(state.locationAsked&&state.locationPermission==="prompt"){if(showMessage)message("bookingMessage","Please allow location access in your browser settings.","error");return;}state.locationAsked=true;$("useCurrentLocation").textContent="RECENTERING…";navigator.geolocation.getCurrentPosition(pos=>{state.locationPermission="granted";const p={lat:pos.coords.latitude,lon:pos.coords.longitude};state.mapCandidate=p;if(state.map)state.map.setView([p.lat,p.lon],17);$("selectedCoordinates").textContent=p.lat.toFixed(5)+", "+p.lon.toFixed(5)+" · GPS";$("useCurrentLocation").textContent="RECENTER GPS";},err=>{if(err.code===1)state.locationPermission="denied";else if(err.code===2)state.locationPermission="unavailable";$("useCurrentLocation").textContent="USE MY GPS";if(showMessage)message("bookingMessage",err.code===1?"Location permission denied. Enable it in browser settings.":err.message||"Unable to get GPS location.","error");},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});}
+  async function getTelegramLocation(){
+    const lm=tg&&tg.LocationManager;
+    if(!lm)return null;
+    await new Promise(resolve=>lm.init(resolve));
+    if(!lm.isLocationAvailable)return null;
+    if(!lm.isAccessGranted){
+      const granted=await new Promise(resolve=>lm.requestLocation(resolve));
+      if(!granted)throw new Error("Location permission was not granted in Telegram.");
+    }
+    return await new Promise((resolve,reject)=>lm.getLocation(location=>{
+      if(!location){reject(new Error("Telegram could not read your location."));return;}
+      resolve({lat:Number(location.latitude),lon:Number(location.longitude),accuracy:location.horizontal_accuracy??null});
+    }));
+  }
+  async function requestCurrentLocation(showMessage=true){
+    const button=$("useCurrentLocation");
+    button.textContent="RECENTERING…";
+    try{
+      let p=await getTelegramLocation();
+      if(!p){
+        if(!navigator.geolocation)throw new Error("Location is not supported by this Telegram client.");
+        p=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(
+          pos=>resolve({lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:pos.coords.accuracy}),
+          err=>reject(new Error(err.message||"Unable to get GPS location.")),
+          {enableHighAccuracy:true,timeout:15000,maximumAge:60000}
+        ));
+      }
+      state.locationPermission="granted";
+      state.mapCandidate={lat:p.lat,lon:p.lon};
+      if(state.map)state.map.setView([p.lat,p.lon],17);
+      $("selectedCoordinates").textContent=p.lat.toFixed(5)+", "+p.lon.toFixed(5)+" · GPS";
+      button.textContent="RECENTER GPS";
+      if(showMessage)message("bookingMessage","","");
+    }catch(error){
+      button.textContent="USE MY GPS";
+      if(showMessage)message("bookingMessage",error.message||"Unable to get GPS location.","error");
+      else console.warn("Could not get pickup location:",error);
+    }
+  }
   async function checkLocationPermission(){if(!navigator.permissions||!navigator.permissions.query)return;try{const p=await navigator.permissions.query({name:"geolocation"});state.locationPermission=p.state;p.onchange=()=>{state.locationPermission=p.state;};}catch(_){} }
 
 
