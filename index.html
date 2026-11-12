@@ -19,11 +19,10 @@
       <section id="errorPanel" class="panel hidden"><h2>Connection problem</h2><p id="errorText"></p><button class="btn primary" id="retryBtn">Try again</button></section>
       <section id="appContent" class="hidden">
         <div class="welcome"><div><span class="eyebrow">YOUR RIDE, YOUR WAY</span><h1 id="greeting">Hello</h1><p id="roleLabel">Passenger account</p></div><span class="status-pill"><i></i> ONLINE</span></div>
-        <nav class="tabs" id="tabs">
-          <button class="tab active" data-view="ride">Ride</button>
-          <button class="tab" data-view="activity">Activity</button>
-          <button class="tab hidden" data-view="driver">Driver</button>
-          <button class="tab hidden" data-view="admin">Admin</button>
+        <nav class="bottom-nav" id="tabs" aria-label="Main navigation">
+          <button class="bottom-nav-item tab active" data-view="ride" type="button"><span class="nav-icon" aria-hidden="true">⌖</span><span>កក់ដំណើរ</span></button>
+          <button class="bottom-nav-item tab" data-view="activity" type="button"><span class="nav-icon" aria-hidden="true">◷</span><span>ប្រវត្តិ</span></button>
+          <button class="bottom-nav-item tab" data-view="profile" type="button"><span class="nav-icon" aria-hidden="true">◎</span><span>Profile</span></button>
         </nav>
 
         <section id="rideView" class="view">
@@ -98,8 +97,23 @@
           <h3>Driver applications</h3><div id="adminDrivers" class="stack"></div>
           <h3>Recent bookings</h3><div id="adminBookings" class="stack"></div>
         </section>
-      </section>
-    </main>
+
+        <section id="profileView" class="view hidden">
+          <div class="section-heading"><div><span class="eyebrow">YOUR ACCOUNT</span><h2>Profile</h2></div></div>
+          <div class="panel profile-card">
+            <div class="profile-avatar" id="profileAvatar">W</div>
+            <div class="profile-main"><h3 id="profileName">WING FAST User</h3><p id="profileUsername" class="muted">@username</p><span id="profileRole" class="profile-role">Passenger</span></div>
+          </div>
+          <div class="panel profile-details">
+            <div class="profile-detail"><span>Phone number</span><b id="profilePhone">Not added</b></div>
+            <div class="profile-detail"><span>Telegram ID</span><b id="profileTelegramId">—</b></div>
+            <div class="profile-detail"><span>Account status</span><b id="profileStatus">Active</b></div>
+          </div>
+          <div id="profileDriverAction" class="panel profile-action hidden"><div><b>Driver Center</b><p class="muted">Manage your driver account and ride requests.</p></div><button type="button" class="small-action" data-open-view="driver">OPEN →</button></div>
+          <div id="profileAdminAction" class="panel profile-action hidden"><div><b>Admin Panel</b><p class="muted">Manage drivers and bookings.</p></div><button type="button" class="small-action" data-open-view="admin">OPEN →</button></div>
+        </section>
+        </section>
+      </main>
     <footer><span>WING FAST</span><span>SAFE · SIMPLE · FAST</span></footer>
   </div>
   <script src="/static/app.js"></script>
