@@ -25,6 +25,48 @@
   }
   const state = { user:null,driver:null,pickup:null,destination:null,map:null,driverMarkers:new Map(),pickupMarker:null,destinationMarker:null,routeLine:null,selectedRouteLine:null,mapMode:"pickup",pickerMode:"pickup",mapCandidate:null,distanceMode:"road",distanceKm:null,liveTimer:null,watchId:null,locationTimer:null,locationPermission:"unknown",locationAsked:false };
   const authHeaders = () => ({ "Content-Type": "application/json", "Authorization": "tma " + (tg ? tg.initData : "") });
+  const vehiclePhotoObjectUrls = new Map();
+  async function uploadMediaFile(file, category) {
+    if (!file) throw new Error("Choose an image first.");
+    if (!["image/jpeg","image/png","image/webp"].includes(file.type)) throw new Error("Use a JPG, PNG or WEBP image.");
+    if (file.size > 10 * 1024 * 1024) throw new Error("Image must be 10 MB or smaller.");
+    const form = new FormData();
+    form.append("file", file);
+    form.append("category", category);
+    const response = await fetch("/api/media", { method:"POST", headers:{ "Authorization":authHeaders().Authorization }, body:form });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.media || !data.media.id) throw new Error(data.detail || "Image upload failed.");
+    return data.media;
+  }
+  async function loadVehiclePhotoImage(img) {
+    const mediaId = img && img.dataset.vehicleMedia;
+    if (!mediaId) return;
+    try {
+      let url = vehiclePhotoObjectUrls.get(mediaId);
+      if (!url) {
+        const response = await fetch("/api/media/" + encodeURIComponent(mediaId), { headers:authHeaders() });
+        if (!response.ok) throw new Error("Vehicle photo unavailable");
+        url = URL.createObjectURL(await response.blob());
+        vehiclePhotoObjectUrls.set(mediaId, url);
+      }
+      img.src = url;
+      img.closest(".admin-vehicle-media")?.classList.add("has-photo");
+    } catch (_) {
+      img.closest(".admin-vehicle-media")?.classList.add("photo-error");
+    }
+  }
+  function renderProfileAvatar(user, displayName) {
+    const image = $("profileAvatarImage");
+    const fallback = $("profileAvatarFallback");
+    if (!image || !fallback) return;
+    fallback.textContent = (displayName.trim()[0] || "W").toUpperCase();
+    image.onload = () => { image.classList.remove("hidden"); fallback.classList.add("hidden"); };
+    image.onerror = () => { image.classList.add("hidden"); fallback.classList.remove("hidden"); image.removeAttribute("src"); };
+    const telegramUser = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : {};
+    const photoUrl = user.photo_url || telegramUser.photo_url || "";
+    if (typeof photoUrl === "string" && /^https:\/\//i.test(photoUrl)) image.src = photoUrl;
+    else { image.classList.add("hidden"); fallback.classList.remove("hidden"); image.removeAttribute("src"); }
+  }
   async function api(path, options = {}) {
     const response = await fetch(path, { ...options, headers: { ...authHeaders(), ...(options.headers || {}) } });
     const data = await response.json().catch(() => ({}));
@@ -173,7 +215,7 @@
       state.user = result.user; state.driver = result.driver;
       const displayName = [state.user.first_name, state.user.last_name].filter(Boolean).join(" ") || state.user.full_name || "WING FAST User";
       $("profileName").textContent = displayName;
-      $("profileAvatar").textContent = (displayName.trim()[0] || "W").toUpperCase();
+      renderProfileAvatar(state.user, displayName);
       $("profileUsername").textContent = state.user.username ? "@" + state.user.username.replace(/^@/,"") : "Telegram account";
       $("profileRole").textContent = ({admin:"Admin",driver:"Driver",driver_pending:"Driver pending",passenger:"Passenger"})[state.user.role] || "WING FAST member";
       $("profilePhone").textContent = state.user.phone || "Not added";
@@ -225,13 +267,26 @@
     else if (status === "pending") message("driverMessage", "Your application is waiting for admin approval.");
   }
   async function applyDriver() {
-    const payload = { phone:$("driverPhone").value.trim(), vehicle_type:$("driverVehicle").value,
-      vehicle_model:$("driverModel").value.trim(), plate_number:$("driverPlate").value.trim() };
+    const file = $("driverVehiclePhoto").files[0];
+    if (!file) { message("driverMessage", "Please upload a clear vehicle photo.", "error"); return; }
+    const button = $("applyDriverBtn");
+    button.disabled = true;
     try {
+      const media = await uploadMediaFile(file, "vehicle");
+      const payload = { phone:$("driverPhone").value.trim(), vehicle_type:$("driverVehicle").value,
+        vehicle_model:$("driverModel").value.trim(), plate_number:$("driverPlate").value.trim(),
+        vehicle_photo_media_id:media.id };
       await api("/api/driver/apply", { method:"POST", body:JSON.stringify(payload) });
+      $("driverVehiclePhoto").value = "";
+      $("driverVehiclePhotoPreview").classList.remove("has-image");
+      $("driverVehiclePhotoPreviewImage").removeAttribute("src");
+      $("driverVehiclePhotoPreviewImage").classList.add("hidden");
+      $("driverVehiclePhotoPreview").querySelector("span").classList.remove("hidden");
       message("driverMessage", "Application submitted. Please wait for admin approval.", "success");
+      haptic("success");
       boot();
-    } catch (e) { message("driverMessage", e.message, "error"); }
+    } catch (e) { message("driverMessage", e.message, "error"); haptic("error"); }
+    finally { button.disabled = false; }
   }
   async function sendLocation(pos) {
     try { await api("/api/driver/location", { method:"POST", body:JSON.stringify({
@@ -366,13 +421,8 @@
     const btn = $("savePromotionBtn");
     btn.disabled = true;
     try {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("category", "other");
-      const response = await fetch("/api/media", {method:"POST", headers:{"Authorization":authHeaders().Authorization}, body:form});
-      const uploaded = await response.json().catch(()=>({}));
-      if (!response.ok) throw new Error(uploaded.detail || "Image upload failed");
-      await api("/api/admin/promotions", {method:"POST", body:JSON.stringify({media_id:uploaded.media.id})});
+      const uploaded = await uploadMediaFile(file, "other");
+      await api("/api/admin/promotions", {method:"POST", body:JSON.stringify({media_id:uploaded.id})});
       $("promotionUpload").value = "";
       message("promotionMessage", "Promotion image saved.", "success");
       await loadPromotion();
@@ -399,11 +449,17 @@
       ]);
       $("adminStats").innerHTML = [["USERS",stats.users],["PENDING DRIVERS",stats.pending_drivers],["ACTIVE DRIVERS",stats.active_drivers],["ACTIVE RIDES",stats.active_bookings]]
         .map(([label,value]) => '<div class="stat"><b>' + value + '</b><span>' + label + '</span></div>').join("");
-      $("adminDrivers").innerHTML = drivers.items.length ? drivers.items.map((d) =>
-        '<article class="admin-card"><strong>' + escapeHtml(d.first_name || d.driver_id) + ' · ' + escapeHtml(d.plate_number) + '</strong><small>' + escapeHtml(d.vehicle_model) + ' / ' + escapeHtml(d.phone) + ' · ' + escapeHtml(d.status) + '</small>' +
-        '<div class="card-actions">' + (d.status === "pending" ? '<button class="mini-btn good" data-approve="' + escapeHtml(d.driver_id) + '">APPROVE</button><button class="mini-btn" data-reject="' + escapeHtml(d.driver_id) + '">REJECT</button>' : '') +
-        (d.status !== "blocked" ? '<button class="mini-btn" data-block="' + escapeHtml(d.driver_id) + '">BLOCK DRIVER</button>' : '<span class="muted">BLOCKED</span>') + '</div></article>'
-      ).join("") : '<div class="empty-state">No driver applications yet.</div>';
+      $("adminDrivers").innerHTML = drivers.items.length ? drivers.items.map((d) => {
+        const driverId = escapeHtml(d.driver_id);
+        const photoId = escapeHtml(d.vehicle_photo_media_id || "");
+        return '<article class="admin-card driver-review-card"><div class="admin-driver-head"><div class="admin-vehicle-media">' +
+          (photoId ? '<img data-vehicle-media="' + photoId + '" alt="Vehicle photo">' : '') +
+          '<span class="admin-vehicle-placeholder">Vehicle photo not available</span></div><div class="admin-driver-data"><strong>' + escapeHtml(d.first_name || d.driver_id) + ' · ' + escapeHtml(d.plate_number || "—") + '</strong><small>' + escapeHtml(d.vehicle_model || "—") + ' / ' + escapeHtml(d.phone || "—") + ' · ' + escapeHtml(d.status) + '</small></div></div>' +
+          '<label class="vehicle-photo-edit">UPDATE VEHICLE PHOTO<input type="file" accept="image/jpeg,image/png,image/webp" data-update-vehicle-photo="' + driverId + '"></label>' +
+          '<div class="card-actions">' + (d.status === "pending" ? '<button class="mini-btn good" data-approve="' + driverId + '">APPROVE</button><button class="mini-btn" data-reject="' + driverId + '">REJECT</button>' : '') +
+          (d.status !== "blocked" ? '<button class="mini-btn" data-block="' + driverId + '">BLOCK DRIVER</button>' : '<span class="muted">BLOCKED</span>') + '</div></article>';
+      }).join("") : '<div class="empty-state">No driver applications yet.</div>';
+      await Promise.all([...$("adminDrivers").querySelectorAll("[data-vehicle-media]")].map(loadVehiclePhotoImage));
       $("adminBookings").innerHTML = bookings.items.slice(0,25).map((b) =>
         '<article class="ride-card"><strong>' + escapeHtml(b.destination_text) + '</strong><small>' + escapeHtml(b.status) + ' · Passenger ' + escapeHtml(b.passenger_id) + '</small></article>'
       ).join("") || '<div class="empty-state">No bookings yet.</div>';
@@ -426,6 +482,38 @@
     const approve = event.target.closest("[data-approve]"); if (approve) adminAction("/api/admin/drivers/" + encodeURIComponent(approve.dataset.approve) + "/approve");
     const reject = event.target.closest("[data-reject]"); if (reject) adminAction("/api/admin/drivers/" + encodeURIComponent(reject.dataset.reject) + "/reject");
     const block = event.target.closest("[data-block]"); if (block && confirm("Block this driver and account?")) adminAction("/api/admin/drivers/" + encodeURIComponent(block.dataset.block) + "/block");
+  });
+  document.addEventListener("change", async (event) => {
+    const input = event.target.closest("[data-update-vehicle-photo]");
+    if (!input || !input.files || !input.files[0]) return;
+    const driverId = input.dataset.updateVehiclePhoto;
+    input.disabled = true;
+    try {
+      const media = await uploadMediaFile(input.files[0], "vehicle");
+      await api("/api/admin/drivers/" + encodeURIComponent(driverId) + "/vehicle-photo", {
+        method:"POST", body:JSON.stringify({ media_id:media.id })
+      });
+      haptic("success");
+      await loadAdmin();
+    } catch (error) { alert(error.message || "Vehicle photo update failed."); haptic("error"); }
+    finally { input.disabled = false; input.value = ""; }
+  });
+  const vehiclePhotoInput = $("driverVehiclePhoto");
+  if (vehiclePhotoInput) vehiclePhotoInput.addEventListener("change", () => {
+    const file = vehiclePhotoInput.files && vehiclePhotoInput.files[0];
+    const preview = $("driverVehiclePhotoPreview");
+    const image = $("driverVehiclePhotoPreviewImage");
+    const hint = preview && preview.querySelector("span");
+    if (!file) { preview?.classList.remove("has-image"); image?.classList.add("hidden"); if (hint) hint.classList.remove("hidden"); return; }
+    if (!["image/jpeg","image/png","image/webp"].includes(file.type) || file.size > 10 * 1024 * 1024) {
+      vehiclePhotoInput.value = "";
+      message("driverMessage", "Use a JPG, PNG or WEBP image up to 10 MB.", "error");
+      return;
+    }
+    image.src = URL.createObjectURL(file);
+    image.classList.remove("hidden");
+    if (hint) hint.classList.add("hidden");
+    preview.classList.add("has-image");
   });
   $("locateBtn").addEventListener("click",()=>openLocationPicker("pickup"));
   $("pickupText").addEventListener("click",()=>openLocationPicker("pickup"));
@@ -456,6 +544,13 @@
 (() => {
   const dictionaries = {
     km: {
+      "Vehicle photo":"រូបថតយានយន្ត",
+      "Upload a clear vehicle photo for admin review":"សូមបញ្ចូលរូបថតយានយន្តឲ្យច្បាស់ ដើម្បីឲ្យអ្នកគ្រប់គ្រងពិនិត្យ",
+      "Vehicle photo not available":"មិនមានរូបថតយានយន្ត",
+      "UPDATE VEHICLE PHOTO":"ប្តូររូបថតយានយន្ត",
+      "Please upload a clear vehicle photo.":"សូមបញ្ចូលរូបថតយានយន្តឲ្យច្បាស់។",
+      "Use a JPG, PNG or WEBP image up to 10 MB.":"ប្រើរូប JPG, PNG ឬ WEBP ដែលមានទំហំមិនលើស 10 MB។",
+
       "SET PICKUP":"កំណត់ទីតាំងទទួល",
       "SET DESTINATION":"កំណត់គោលដៅ",
       "USE LINK":"ប្រើ Link",
@@ -584,6 +679,13 @@
       "Block this driver and account?":"តើអ្នកចង់បិទអ្នកបើកបរ និងគណនីនេះមែនទេ?"
     },
     zh: {
+      "Vehicle photo":"车辆照片",
+      "Upload a clear vehicle photo for admin review":"请上传清晰的车辆照片以供管理员审核",
+      "Vehicle photo not available":"暂无车辆照片",
+      "UPDATE VEHICLE PHOTO":"更新车辆照片",
+      "Please upload a clear vehicle photo.":"请上传清晰的车辆照片。",
+      "Use a JPG, PNG or WEBP image up to 10 MB.":"请使用不超过 10 MB 的 JPG、PNG 或 WEBP 图片。",
+
       "SET PICKUP":"设置上车地点",
       "SET DESTINATION":"设置目的地",
       "USE LINK":"使用链接",
