@@ -1261,3 +1261,8 @@ footer{color:#98A2AF!important;border-color:#E7EBF0!important}
 
 /* Preserve the original layout; only make vehicle images visible */
 .vehicle-option-art img{display:block!important}
+
+
+/* Keep the floating navigation fixed to the Telegram viewport. The old horizontal overflow rule on .app-shell could trap fixed descendants while scrolling. */
+.app-shell{overflow:visible!important;overflow-x:visible!important;overflow-y:visible!important}
+.bottom-nav{position:fixed!important;top:auto!important;bottom:calc(12px + env(safe-area-inset-bottom,0px))!important;left:50%!important;right:auto!important;transform:translate3d(-50%,0,0)!important;z-index:9999!important}
