@@ -6,7 +6,7 @@
     try {
       tg.setBackgroundColor("#F5F7FA");
       tg.setHeaderColor("#F5F7FA");
-      if (typeof tg.setBottomBarColor === "function") tg.setBottomBarColor("#0D1718");
+      if (typeof tg.setBottomBarColor === "function") tg.setBottomBarColor("#F5F7FA");
       // Keep the normal Telegram Mini App window; do not force fullscreen.
       if (typeof tg.expand === "function") tg.expand();
     } catch (error) {
@@ -14,6 +14,15 @@
     }
   }
   const $ = (id) => document.getElementById(id);
+  let locationCloseTimer = null;
+  function haptic(style = "light") {
+    try {
+      const feedback = tg && tg.HapticFeedback;
+      if (!feedback) return;
+      if (style === "success" || style === "error" || style === "warning") feedback.notificationOccurred(style);
+      else feedback.impactOccurred(style === "soft" ? "soft" : style === "medium" ? "medium" : "light");
+    } catch (_) {}
+  }
   const state = { user:null,driver:null,pickup:null,destination:null,map:null,driverMarkers:new Map(),pickupMarker:null,destinationMarker:null,routeLine:null,selectedRouteLine:null,mapMode:"pickup",pickerMode:"pickup",mapCandidate:null,distanceMode:"road",distanceKm:null,liveTimer:null,watchId:null,locationTimer:null,locationPermission:"unknown",locationAsked:false };
   const authHeaders = () => ({ "Content-Type": "application/json", "Authorization": "tma " + (tg ? tg.initData : "") });
   async function api(path, options = {}) {
@@ -59,7 +68,11 @@
       if (panel) panel.classList.toggle("hidden", name !== view);
     });
     const activePanel = $(view + "View");
-    revealViewTopDown(activePanel);
+    if (activePanel) {
+      activePanel.classList.remove("ios-view-enter");
+      void activePanel.offsetWidth;
+      activePanel.classList.add("ios-view-enter");
+    }
     document.querySelector("main")?.scrollTo({top:0,behavior:"instant"});
     if (view === "activity") loadActivity();
     if (view === "driver") loadDriverView();
@@ -103,8 +116,8 @@
   }
   function startLiveMap(){initMap();if(!state.map)return;setTimeout(()=>state.map.invalidateSize(),150);refreshDrivers();if(state.liveTimer)clearInterval(state.liveTimer);state.liveTimer=setInterval(refreshDrivers,5000);}
   function chooseVehicle(type){$("vehicleType").value=type;document.querySelectorAll("[data-vehicle-choice]").forEach(btn=>{const active=btn.dataset.vehicleChoice===type;btn.classList.toggle("active",active);btn.setAttribute("aria-pressed",String(active));});}
-  async function openLocationPicker(mode){state.pickerMode=mode;state.mapMode=mode;$("locationModalTitle").textContent=mode==="pickup"?"Choose pickup point":"Choose destination";$("locationModalHint").textContent=mode==="pickup"?"The center pin marks your real pickup location. Move the map to adjust.":"Move the map until the center pin marks your destination."; $("locationPicker").classList.remove("hidden");initMap();if(!state.map)return;startLiveMap();const existing=mode==="pickup"?state.pickup:state.destination;if(existing){state.map.setView([existing.lat,existing.lon],16);}else if(mode==="pickup"){await requestCurrentLocation(false);}else if(state.pickup){state.map.setView([state.pickup.lat,state.pickup.lon],14);}setTimeout(()=>{state.map.invalidateSize();const c=state.map.getCenter();state.mapCandidate={lat:c.lat,lon:c.lng};$("selectedCoordinates").textContent=c.lat.toFixed(5)+", "+c.lng.toFixed(5);updateDistance();},180);}
-  function closeLocationPicker(){ $("locationPicker").classList.add("hidden"); }
+  async function openLocationPicker(mode){state.pickerMode=mode;state.mapMode=mode;$("locationModalTitle").textContent=mode==="pickup"?"Choose pickup point":"Choose destination";$("locationModalHint").textContent=mode==="pickup"?"The center pin marks your real pickup location. Move the map to adjust.":"Move the map until the center pin marks your destination."; const modal=$("locationPicker");if(locationCloseTimer){clearTimeout(locationCloseTimer);locationCloseTimer=null;}modal.classList.remove("hidden","is-closing");initMap();if(!state.map)return;startLiveMap();const existing=mode==="pickup"?state.pickup:state.destination;if(existing){state.map.setView([existing.lat,existing.lon],16);}else if(mode==="pickup"){await requestCurrentLocation(false);}else if(state.pickup){state.map.setView([state.pickup.lat,state.pickup.lon],14);}setTimeout(()=>{state.map.invalidateSize();const c=state.map.getCenter();state.mapCandidate={lat:c.lat,lon:c.lng};$("selectedCoordinates").textContent=c.lat.toFixed(5)+", "+c.lng.toFixed(5);updateDistance();},180);}
+  function closeLocationPicker(){ const modal=$("locationPicker"); if(!modal||modal.classList.contains("hidden")||modal.classList.contains("is-closing"))return; modal.classList.add("is-closing"); if(locationCloseTimer)clearTimeout(locationCloseTimer); locationCloseTimer=setTimeout(()=>{modal.classList.add("hidden");modal.classList.remove("is-closing");locationCloseTimer=null;},230); }
   function confirmLocationPicker(){const p=state.mapCandidate;if(!p)return;if(state.pickerMode==="pickup")setPickup(p,"GPS / Map: "+p.lat.toFixed(5)+", "+p.lon.toFixed(5));else setDestination(p,"Map: "+p.lat.toFixed(5)+", "+p.lon.toFixed(5));closeLocationPicker();updateDistance();}
   function haversine(a,b){const rad=x=>x*Math.PI/180,R=6371,dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon),q=Math.sin(dLat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(q));}
   async function updateDistance(){if(!state.pickup||!state.destination){$("distanceInfo").textContent="Choose pickup and destination to calculate distance.";state.distanceKm=null;return;}if(state.distanceMode==="map"){state.distanceKm=haversine(state.pickup,state.destination);$("distanceInfo").textContent="Map distance: "+state.distanceKm.toFixed(2)+" km (straight line).";return;}try{const a=state.pickup,b=state.destination,url="https://router.project-osrm.org/route/v1/driving/"+a.lon+","+a.lat+";"+b.lon+","+b.lat+"?overview=full&geometries=geojson";$("distanceInfo").textContent="Calculating actual road distance…";const data=await(await fetch(url)).json();if(!data.routes||!data.routes[0])throw new Error("No driving route");state.distanceKm=data.routes[0].distance/1000;const pts=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);if(state.selectedRouteLine)state.map.removeLayer(state.selectedRouteLine);state.selectedRouteLine=L.polyline(pts,{color:"#FFC928",weight:4,opacity:.9,dashArray:"7 6"}).addTo(state.map);$("distanceInfo").textContent="Actual driving distance: "+state.distanceKm.toFixed(2)+" km."; }catch(_){state.distanceKm=null;$("distanceInfo").textContent="Could not calculate road route. Try map distance.";}}
@@ -184,9 +197,9 @@
         pickup_lat: state.pickup.lat, pickup_lon: state.pickup.lon, pickup_text: $("pickupText").value,
         destination_text: destination, destination_lat:state.destination?state.destination.lat:null, destination_lon:state.destination?state.destination.lon:null, vehicle_type:$("vehicleType").value, payment_method:$("payment").value, distance_mode:state.distanceMode, estimated_distance_km:state.distanceKm
       })});
-      message("bookingMessage", "Ride request created: " + result.booking_id, "success");
+      message("bookingMessage", "Ride request created: " + result.booking_id, "success"); haptic("success");
       $("destination").value="";state.destination=null;state.distanceKm=null;if(state.destinationMarker){state.map.removeLayer(state.destinationMarker);state.destinationMarker=null;}
-    } catch (e) { message("bookingMessage", e.message, "error"); }
+    } catch (e) { message("bookingMessage", e.message, "error"); haptic("error"); }
     finally { btn.disabled = false; btn.innerHTML = 'FIND A DRIVER <span>→</span>'; }
   }
   async function loadActivity() {
@@ -401,6 +414,9 @@
     catch (e) { alert(e.message); }
   }
   document.addEventListener("click", (event) => {
+    const pressedButton = event.target.closest("button");
+    if (pressedButton && !pressedButton.disabled) haptic("light");
+    if (event.target === $("locationPicker")) closeLocationPicker();
     const tab = event.target.closest(".bottom-nav .tab");
     if (tab) setView(tab.dataset.view);
     const openView = event.target.closest("[data-open-view]");
@@ -432,6 +448,7 @@
   $("savePromotionBtn").addEventListener("click", savePromotion);
   $("removePromotionBtn").addEventListener("click", removePromotion);
   $("retryBtn").addEventListener("click", boot);
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeLocationPicker(); });
   boot();
 })();
 
