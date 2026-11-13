@@ -3,105 +3,321 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#F5F7FA">
+  <meta name="theme-color" content="#F4F7FB">
   <title>WING FAST</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/static/style.css?v=20261113-restore-original-layout-6">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css?v=20261114-modern-ui">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
   <div class="app-shell">
+    <!-- Modern Sticky Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-mark">W</div>
+        <div class="brand-text">
+          <span>WING <b>FAST</b></span>
+          <small>CAMBODIA MOBILITY</small>
+        </div>
+      </div>
+      <div class="header-status">
+        <span class="pulse-dot"></span>
+        <span>LIVE</span>
+      </div>
+    </header>
+
     <main>
-      <section id="loading" class="loading-screen" role="status" aria-live="polite"><div class="loading-orbit"><span></span><span></span><span></span><b>W</b></div><p id="loadingMessage">Checking your Telegram account…</p><small id="loadingDetail">PLEASE WAIT</small></section>
-      <section id="errorPanel" class="panel hidden"><h2>Connection problem</h2><p id="errorText"></p><button class="btn primary" id="retryBtn">Try again</button></section>
+      <!-- Loading Screen -->
+      <section id="loading" class="loading-screen" role="status" aria-live="polite">
+        <div class="loading-orbit"><span></span><span></span><span></span><b>W</b></div>
+        <p id="loadingMessage">Checking your Telegram account…</p>
+        <small id="loadingDetail">PLEASE WAIT</small>
+      </section>
+
+      <!-- Error Screen -->
+      <section id="errorPanel" class="panel error-card hidden">
+        <div class="error-icon">⚠️</div>
+        <h2>Connection problem</h2>
+        <p id="errorText"></p>
+        <button class="btn primary full" id="retryBtn">Try again</button>
+      </section>
+
+      <!-- Main App Content -->
       <section id="appContent" class="hidden">
+        <!-- Floating Bottom Navigation -->
         <nav class="bottom-nav" id="tabs" aria-label="Main navigation">
-          <button class="bottom-nav-item tab active" data-view="ride" type="button" aria-current="page"><i class="nav-icon" data-lucide="house" aria-hidden="true"></i><span>Ride</span></button>
-          <button class="bottom-nav-item tab" data-view="activity" type="button"><i class="nav-icon" data-lucide="history" aria-hidden="true"></i><span>Activity</span></button>
-          <button class="bottom-nav-item tab" data-view="profile" type="button"><i class="nav-icon" data-lucide="user-round" aria-hidden="true"></i><span>Profile</span></button>
+          <button class="bottom-nav-item tab active" data-view="ride" type="button" aria-current="page">
+            <i class="nav-icon" data-lucide="compass" aria-hidden="true"></i>
+            <span>Ride</span>
+          </button>
+          <button class="bottom-nav-item tab" data-view="activity" type="button">
+            <i class="nav-icon" data-lucide="clock-4" aria-hidden="true"></i>
+            <span>Activity</span>
+          </button>
+          <button class="bottom-nav-item tab" data-view="profile" type="button">
+            <i class="nav-icon" data-lucide="user-round" aria-hidden="true"></i>
+            <span>Profile</span>
+          </button>
           <div class="nav-language-item language-switcher">
-            <button type="button" id="languageToggle" class="language-toggle" aria-label="Language" aria-expanded="false" aria-haspopup="true"><i class="nav-icon" data-lucide="globe-2" aria-hidden="true"></i><span id="languageCode">KH</span></button>
+            <button type="button" id="languageToggle" class="language-toggle" aria-label="Language" aria-expanded="false" aria-haspopup="true">
+              <i class="nav-icon" data-lucide="globe" aria-hidden="true"></i>
+              <span id="languageCode">KH</span>
+            </button>
             <div id="languageMenu" class="language-menu hidden" role="group" aria-label="Choose language">
-              <button type="button" class="language-choice active" data-language="km" aria-pressed="true">KH</button>
-              <button type="button" class="language-choice" data-language="en" aria-pressed="false">EN</button>
-              <button type="button" class="language-choice" data-language="zh" aria-pressed="false">CH</button>
+              <button type="button" class="language-choice active" data-language="km" aria-pressed="true">🇰🇭 KH</button>
+              <button type="button" class="language-choice" data-language="en" aria-pressed="false">🇬🇧 EN</button>
+              <button type="button" class="language-choice" data-language="zh" aria-pressed="false">🇨🇳 CH</button>
             </div>
           </div>
         </nav>
 
+        <!-- RIDE VIEW -->
         <section id="rideView" class="view">
+          <!-- Promotion Banner -->
+          <div id="promotionBanner" class="promotion-banner" aria-label="Promotion">
+            <div class="promotion-placeholder">
+              <span class="promo-badge">SPECIAL OFFER</span>
+              <strong>WING FAST</strong>
+              <small>Safe · Simple · Fast Rides</small>
+            </div>
+            <img id="promotionImage" alt="Promotion">
+          </div>
+
+          <!-- Booking Form Card -->
           <div class="panel form-panel">
-            <div class="section-heading"><div><span class="eyebrow">BOOK A RIDE</span><h2>Where to?</h2></div><span class="step">01 / 02</span></div>
-            <label>Pickup location</label>
-            <div class="location-row location-select-row"><span class="field-icon pickup"></span><input id="pickupText" placeholder="Tap to choose pickup location" readonly><button type="button" id="locateBtn" class="small-action">CHOOSE</button></div>
-            <label>Destination</label>
-            <div class="location-row location-select-row"><span class="field-icon destination"></span><input id="destination" placeholder="Tap to choose destination" readonly><button type="button" id="chooseDestinationBtn" class="small-action">CHOOSE</button></div>
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">BOOK A RIDE</span>
+                <h2>Where to?</h2>
+              </div>
+              <span class="step">STEP 01</span>
+            </div>
+
+            <!-- Modern Route Timeline -->
+            <div class="route-timeline">
+              <div class="timeline-track" aria-hidden="true">
+                <span class="track-dot pickup"></span>
+                <span class="track-line"></span>
+                <span class="track-dot destination"></span>
+              </div>
+              <div class="route-inputs">
+                <div class="route-field">
+                  <label>Pickup location</label>
+                  <div class="location-row location-select-row">
+                    <input id="pickupText" placeholder="Tap to choose pickup location" readonly>
+                    <button type="button" id="locateBtn" class="pill-action">CHOOSE</button>
+                  </div>
+                </div>
+                <div class="route-field">
+                  <label>Destination</label>
+                  <div class="location-row location-select-row">
+                    <input id="destination" placeholder="Enter destination" readonly>
+                    <button type="button" id="chooseDestinationBtn" class="pill-action">CHOOSE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fare Estimate Receipt -->
             <div id="fareSummary" class="fare-summary hidden" aria-live="polite">
-              <div class="fare-summary-heading"><strong>FARE ESTIMATE</strong><span id="fareVehicleName"></span></div>
+              <div class="fare-summary-heading">
+                <strong>FARE ESTIMATE</strong>
+                <span id="fareVehicleName" class="fare-badge"></span>
+              </div>
               <div class="fare-summary-rows">
                 <div><span>Distance</span><b id="fareDistance">—</b></div>
                 <div><span>Base fare</span><b id="fareBase">—</b></div>
                 <div><span>Price per km</span><b id="farePerKm">—</b></div>
                 <div><span>Minimum fare</span><b id="fareMinimum">—</b></div>
               </div>
-              <div class="fare-total-row"><span>Estimated total</span><strong id="fareTotal">—</strong></div>
+              <div class="fare-total-row">
+                <span>Estimated total</span>
+                <strong id="fareTotal">—</strong>
+              </div>
               <p class="fare-disclaimer">Final fare may be confirmed by WING FAST at booking time.</p>
             </div>
-            <div class="two-col"><div><label>Payment</label><select id="payment"><option value="cash">Cash</option><option value="digital">Digital</option></select></div></div>
-            <button id="bookBtn" class="btn primary full">FIND A DRIVER <span>→</span></button>
+
+            <!-- Payment & Submit -->
+            <div class="booking-Controls">
+              <div class="payment-selector">
+                <label>Payment</label>
+                <div class="select-wrap">
+                  <select id="payment">
+                    <option value="cash">💵 Cash</option>
+                    <option value="digital">💳 Digital</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <button id="bookBtn" class="btn primary full">
+              <span>FIND A DRIVER</span>
+              <span class="btn-arrow">→</span>
+            </button>
             <p id="bookingMessage" class="message" aria-live="polite"></p>
           </div>
-          <div id="promotionBanner" class="promotion-banner" aria-label="Promotion"><div class="promotion-placeholder"><span>WING FAST</span><small>Promotion</small></div><img id="promotionImage" alt="Promotion"></div>
+
+          <!-- Vehicle Picker Card -->
           <div class="panel vehicle-picker">
-            <div class="section-heading"><div><span class="eyebrow">CHOOSE YOUR RIDE</span><h2>Choose your vehicle</h2><p class="vehicle-selection-hint">Tap once to select · Tap again to show all vehicles</p></div><span class="step">01 / 03</span></div>
-            <div class="vehicle-options" id="vehicleOptions" role="group" aria-label="Choose vehicle type"><div class="empty-state">Loading vehicles…</div></div>
-            <select id="vehicleType" class="visually-hidden" aria-hidden="true" tabindex="-1"><option value="all">All vehicles</option></select>
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">CHOOSE YOUR RIDE</span>
+                <h2>Choose your vehicle</h2>
+                <p class="vehicle-selection-hint">Tap once to select · Tap again to show all vehicles</p>
+              </div>
+              <span class="step">STEP 02</span>
+            </div>
+            <div class="vehicle-options" id="vehicleOptions" role="group" aria-label="Choose vehicle type">
+              <div class="empty-state">Loading vehicles…</div>
+            </div>
+            <select id="vehicleType" class="visually-hidden" aria-hidden="true" tabindex="-1">
+              <option value="all">All vehicles</option>
+            </select>
           </div>
+
+          <!-- Location Picker Modal (Bottom Sheet) -->
           <div id="locationPicker" class="location-modal hidden" role="dialog" aria-modal="true" aria-labelledby="locationModalTitle">
             <div class="location-modal-card">
-              <div class="location-modal-head"><div><span class="eyebrow">SET LOCATION</span><h2 id="locationModalTitle">Choose pickup point</h2></div><button type="button" id="closeLocationPicker" class="icon-btn" aria-label="Close">×</button></div>
+              <div class="sheet-handle" aria-hidden="true"></div>
+              <div class="location-modal-head">
+                <div>
+                  <span class="eyebrow">SET LOCATION</span>
+                  <h2 id="locationModalTitle">Choose pickup point</h2>
+                </div>
+                <button type="button" id="closeLocationPicker" class="icon-btn" aria-label="Close">×</button>
+              </div>
               <p id="locationModalHint" class="muted">Move the map until the pin is at the exact location.</p>
-              <div class="location-map-wrap"><div id="liveMap" aria-label="Choose a location on map"></div><div class="map-center-pin" aria-hidden="true"><span></span></div></div>
-              <div class="location-picker-actions"><button type="button" id="useCurrentLocation" class="small-action">RECENTER GPS</button><span id="selectedCoordinates" class="muted">Select a point on the map</span></div>
-              <div class="map-input-tools"><input id="googleMapsLink" placeholder="Paste Google Maps link (optional)"><button type="button" id="useMapLinkBtn" class="small-action">USE LINK</button></div>
-              <div class="route-options"><label for="distanceMode">Fare distance method</label><select id="distanceMode"><option value="road">Actual driving distance</option><option value="map">Map distance (straight line)</option></select><p id="distanceInfo" class="muted">Choose pickup and destination to calculate distance.</p></div>
-              <div class="location-modal-footer"><button type="button" id="cancelLocationPicker" class="btn secondary">CANCEL</button><button type="button" id="confirmLocationPicker" class="btn primary">CONFIRM LOCATION</button></div>
-              <div class="map-live-info"><span class="map-dot"></span><b id="mapStatus">Finding nearby drivers…</b><span id="driverCount">Live driver locations update while they are online</span></div>
+              
+              <div class="location-map-wrap">
+                <div id="liveMap" aria-label="Choose a location on map"></div>
+                <div class="map-center-pin" aria-hidden="true"><span></span></div>
+              </div>
+
+              <div class="location-picker-actions">
+                <button type="button" id="useCurrentLocation" class="pill-action gps-btn">📍 RECENTER GPS</button>
+                <span id="selectedCoordinates" class="coords-badge">Select a point on the map</span>
+              </div>
+
+              <div class="map-input-tools">
+                <input id="googleMapsLink" placeholder="Paste Google Maps link (optional)">
+                <button type="button" id="useMapLinkBtn" class="pill-action">USE LINK</button>
+              </div>
+
+              <div class="route-options">
+                <label for="distanceMode">Fare distance method</label>
+                <select id="distanceMode">
+                  <option value="road">Actual driving distance</option>
+                  <option value="map">Map distance (straight line)</option>
+                </select>
+                <p id="distanceInfo" class="muted">Choose pickup and destination to calculate distance.</p>
+              </div>
+
+              <div class="location-modal-footer">
+                <button type="button" id="cancelLocationPicker" class="btn secondary">CANCEL</button>
+                <button type="button" id="confirmLocationPicker" class="btn primary">CONFIRM LOCATION</button>
+              </div>
+
+              <div class="map-live-info">
+                <span class="map-dot"></span>
+                <b id="mapStatus">Finding nearby drivers…</b>
+                <span id="driverCount">Live driver locations update while they are online</span>
+              </div>
             </div>
           </div>
-          
         </section>
 
+        <!-- ACTIVITY VIEW -->
         <section id="activityView" class="view hidden">
-          <div class="section-heading"><div><span class="eyebrow">YOUR JOURNEY</span><h2>Ride activity</h2></div><button class="text-action" id="loadActivity">Refresh</button></div>
-          <div id="activityList" class="stack"><div class="empty-state">Your rides will appear here.</div></div>
+          <div class="section-heading page-head">
+            <div>
+              <span class="eyebrow">YOUR JOURNEY</span>
+              <h2>Ride activity</h2>
+            </div>
+            <button class="pill-action" id="loadActivity">Refresh</button>
+          </div>
+          <div id="activityList" class="stack">
+            <div class="empty-state">Your rides will appear here.</div>
+          </div>
         </section>
 
+        <!-- DRIVER VIEW -->
         <section id="driverView" class="view hidden">
-          <div class="section-heading"><div><span class="eyebrow">DRIVER CENTER</span><h2>Driver dashboard</h2></div><span id="driverStatus" class="status-pill">NOT REGISTERED</span></div>
+          <div class="section-heading page-head">
+            <div>
+              <span class="eyebrow">DRIVER CENTER</span>
+              <h2>Driver dashboard</h2>
+            </div>
+            <span id="driverStatus" class="status-pill">NOT REGISTERED</span>
+          </div>
+
           <div id="driverApplyPanel" class="panel form-panel">
-            <h3>Driver registration</h3><p class="muted">Submit your vehicle details. Admin approval is required before receiving trips.</p>
-            <label>Phone number</label><input id="driverPhone" placeholder="+855 …">
-            <label>Vehicle type</label><select id="driverVehicle"><option value="">Loading vehicles…</option></select>
-            <label>Vehicle model</label><input id="driverModel" placeholder="e.g. Toyota Prius">
-            <label>License plate</label><input id="driverPlate" placeholder="e.g. ភ្នំពេញ 2AB-1234">
+            <h3>Driver registration</h3>
+            <p class="muted">Submit your vehicle details. Admin approval is required before receiving trips.</p>
+            <label>Phone number</label>
+            <input id="driverPhone" placeholder="+855 …">
+            <label>Vehicle type</label>
+            <select id="driverVehicle"><option value="">Loading vehicles…</option></select>
+            <label>Vehicle model</label>
+            <input id="driverModel" placeholder="e.g. Toyota Prius">
+            <label>License plate</label>
+            <input id="driverPlate" placeholder="e.g. ភ្នំពេញ 2AB-1234">
             <label for="driverVehiclePhoto">Vehicle photo</label>
             <input id="driverVehiclePhoto" type="file" accept="image/jpeg,image/png,image/webp">
-            <div id="driverVehiclePhotoPreview" class="vehicle-photo-preview"><span>Upload a clear vehicle photo for admin review</span><img id="driverVehiclePhotoPreviewImage" class="hidden" alt="Vehicle photo preview"></div>
-            <button id="applyDriverBtn" class="btn primary full">SUBMIT FOR APPROVAL</button><p id="driverMessage" class="message"></p>
+            <div id="driverVehiclePhotoPreview" class="vehicle-photo-preview">
+              <span>Upload a clear vehicle photo for admin review</span>
+              <img id="driverVehiclePhotoPreviewImage" class="hidden" alt="Vehicle photo preview">
+            </div>
+            <button id="applyDriverBtn" class="btn primary full">SUBMIT FOR APPROVAL</button>
+            <p id="driverMessage" class="message"></p>
           </div>
+
           <div id="driverActivePanel" class="hidden">
-            <div class="panel driver-live"><div><span class="eyebrow">DRIVER STATUS</span><h3>Ready for requests</h3><p class="muted">Turn on location to receive nearby ride requests.</p></div><button id="shareLocationBtn" class="btn primary">GO ONLINE</button></div>
-            <div class="section-heading"><h2>Available requests</h2><button class="text-action" id="loadRequests">Refresh</button></div>
-            <div id="requestList" class="stack"><div class="empty-state">No ride requests right now.</div></div>
+            <div class="panel driver-live">
+              <div>
+                <span class="eyebrow">DRIVER STATUS</span>
+                <h3>Ready for requests</h3>
+                <p class="muted">Turn on location to receive nearby ride requests.</p>
+              </div>
+              <button id="shareLocationBtn" class="btn primary">GO ONLINE</button>
+            </div>
+            <div class="section-heading">
+              <h2>Available requests</h2>
+              <button class="pill-action" id="loadRequests">Refresh</button>
+            </div>
+            <div id="requestList" class="stack">
+              <div class="empty-state">No ride requests right now.</div>
+            </div>
           </div>
         </section>
 
+        <!-- ADMIN VIEW -->
         <section id="adminView" class="view hidden">
-          <div class="section-heading"><div><span class="eyebrow">CONTROL CENTER</span><h2>Admin panel</h2></div><button class="text-action" id="loadAdmin">Refresh</button></div>
+          <div class="section-heading page-head">
+            <div>
+              <span class="eyebrow">CONTROL CENTER</span>
+              <h2>Admin panel</h2>
+            </div>
+            <button class="pill-action" id="loadAdmin">Refresh</button>
+          </div>
+
+          <div id="adminStats" class="stats-grid"></div>
+
           <section class="panel vehicle-catalog-admin">
-            <div class="section-heading"><div><span class="eyebrow">RIDE VEHICLES</span><h3>Vehicle catalogue</h3></div><span class="step">ADMIN</span></div>
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">RIDE VEHICLES</span>
+                <h3>Vehicle catalogue</h3>
+              </div>
+              <span class="step">ADMIN</span>
+            </div>
             <p class="muted">Add vehicle types, change display names, and set the price charged per kilometre.</p>
-            <div id="vehicleCatalogList" class="vehicle-catalog-list"><div class="empty-state">Loading vehicles…</div></div>
+            <div id="vehicleCatalogList" class="vehicle-catalog-list">
+              <div class="empty-state">Loading vehicles…</div>
+            </div>
             <div class="vehicle-catalog-add">
               <div class="vehicle-catalog-add-title">ADD NEW VEHICLE</div>
               <label for="newVehicleName">Vehicle name</label>
@@ -110,46 +326,98 @@
               <input id="newVehiclePrice" type="number" min="0" max="10000" step="0.01" inputmode="decimal" placeholder="e.g. 0.50">
               <label for="newVehicleImage">Vehicle image</label>
               <input id="newVehicleImage" type="file" accept="image/jpeg,image/png,image/webp">
-              <div class="vehicle-image-size-note"><strong>Image guide</strong><span>Square 1:1 · Recommended 512 × 512 px · JPG, PNG or WebP · Maximum 10 MB · Transparent or clean background</span></div>
-              <div id="newVehicleImagePreview" class="vehicle-image-square"><span>1:1 PREVIEW</span><img class="hidden" alt="New vehicle preview"></div>
+              <div class="vehicle-image-size-note">
+                <strong>Image guide</strong>
+                <span>Square 1:1 · Recommended 512 × 512 px · JPG, PNG or WebP · Maximum 10 MB · Transparent or clean background</span>
+              </div>
+              <div id="newVehicleImagePreview" class="vehicle-image-square">
+                <span>1:1 PREVIEW</span>
+                <img class="hidden" alt="New vehicle preview">
+              </div>
               <button type="button" class="btn primary full" id="addVehicleBtn">ADD VEHICLE</button>
             </div>
             <p id="vehicleAssetsMessage" class="message" aria-live="polite"></p>
           </section>
+
           <section class="panel promotion-admin">
-            <div class="section-heading"><div><span class="eyebrow">PROMOTION</span><h3>Promotion image</h3></div><span class="step">BANNER</span></div>
-            <div id="adminPromotionPreview" class="promotion-admin-preview"><span>No promotion image</span></div>
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">PROMOTION</span>
+                <h3>Promotion image</h3>
+              </div>
+              <span class="step">BANNER</span>
+            </div>
+            <div id="adminPromotionPreview" class="promotion-admin-preview">
+              <span>No promotion image</span>
+            </div>
             <label for="promotionUpload">Upload or replace image</label>
             <input id="promotionUpload" type="file" accept="image/jpeg,image/png,image/webp">
             <button type="button" id="savePromotionBtn" class="btn primary full">SAVE PROMOTION</button>
             <button type="button" id="removePromotionBtn" class="text-action promotion-remove hidden">REMOVE PROMOTION</button>
             <p id="promotionMessage" class="message" aria-live="polite"></p>
           </section>
-          <div id="adminStats" class="stats-grid"></div>
-          <h3>Driver applications</h3><div id="adminDrivers" class="stack"></div>
-          <h3>Recent bookings</h3><div id="adminBookings" class="stack"></div>
+
+          <h3 class="subsection-title">Driver applications</h3>
+          <div id="adminDrivers" class="stack"></div>
+
+          <h3 class="subsection-title">Recent bookings</h3>
+          <div id="adminBookings" class="stack"></div>
         </section>
 
+        <!-- PROFILE VIEW -->
         <section id="profileView" class="view hidden">
-          <div class="section-heading"><div><span class="eyebrow">YOUR ACCOUNT</span><h2>Profile</h2></div></div>
-          <div class="panel profile-card">
-            <div class="profile-avatar" id="profileAvatar"><span id="profileAvatarFallback">W</span><img id="profileAvatarImage" class="hidden" alt="Telegram profile photo" referrerpolicy="no-referrer"></div>
-            <div class="profile-main"><h3 id="profileName">WING FAST User</h3><p id="profileUsername" class="muted">@username</p><span id="profileRole" class="profile-role">Passenger</span></div>
+          <div class="section-heading page-head">
+            <div>
+              <span class="eyebrow">YOUR ACCOUNT</span>
+              <h2>Profile</h2>
+            </div>
           </div>
+
+          <div class="panel profile-card">
+            <div class="profile-avatar" id="profileAvatar">
+              <span id="profileAvatarFallback">W</span>
+              <img id="profileAvatarImage" class="hidden" alt="Telegram profile photo" referrerpolicy="no-referrer">
+            </div>
+            <div class="profile-main">
+              <h3 id="profileName">WING FAST User</h3>
+              <p id="profileUsername" class="muted">@username</p>
+              <span id="profileRole" class="profile-role">Passenger</span>
+            </div>
+          </div>
+
           <div class="panel profile-details">
             <div class="profile-detail"><span>Phone number</span><b id="profilePhone">Not added</b></div>
             <div class="profile-detail"><span>Telegram ID</span><b id="profileTelegramId">—</b></div>
             <div class="profile-detail"><span>Account status</span><b id="profileStatus">Active</b></div>
           </div>
-          <div id="profileDriverAction" class="panel profile-action hidden"><div><b>Driver Center</b><p class="muted">Manage your driver account and ride requests.</p></div><button type="button" class="small-action" data-open-view="driver">OPEN →</button></div>
-          <div id="profileAdminAction" class="panel profile-action hidden"><div><b>Admin Panel</b><p class="muted">Manage drivers and bookings.</p></div><button type="button" class="small-action" data-open-view="admin">OPEN →</button></div>
+
+          <div id="profileDriverAction" class="panel profile-action hidden">
+            <div>
+              <b>Driver Center</b>
+              <p class="muted">Manage your driver account and ride requests.</p>
+            </div>
+            <button type="button" class="pill-action" data-open-view="driver">OPEN →</button>
+          </div>
+
+          <div id="profileAdminAction" class="panel profile-action hidden">
+            <div>
+              <b>Admin Panel</b>
+              <p class="muted">Manage drivers and bookings.</p>
+            </div>
+            <button type="button" class="pill-action" data-open-view="admin">OPEN →</button>
+          </div>
         </section>
-        </section>
-      </main>
-    <footer><span>WING FAST</span><span>SAFE · SIMPLE · FAST</span></footer>
+      </section>
+    </main>
+
+    <footer>
+      <span>WING FAST</span>
+      <span>SAFE · SIMPLE · FAST</span>
+    </footer>
   </div>
+
   <script src="https://unpkg.com/lucide@latest"></script>
   <script>if(window.lucide) window.lucide.createIcons();</script>
-  <script src="/static/app.js?v=20261113-restore-original-layout-6"></script>
+  <script src="/static/app.js?v=20261114-modern-ui"></script>
 </body>
 </html>
