@@ -272,6 +272,11 @@ class VehiclePhotoUpdate(BaseModel):
     media_id: str = Field(min_length=36, max_length=36)
 
 
+class VehicleTypeImageSave(BaseModel):
+    vehicle_type: str = Field(pattern="^(suv|car|tuk_tuk|motorbike|van)$")
+    media_id: str = Field(min_length=36, max_length=36)
+
+
 class PromotionSave(BaseModel):
     media_id: str = Field(min_length=36, max_length=36)
 
@@ -671,6 +676,40 @@ def admin_update_vehicle_photo(driver_id: str, payload: VehiclePhotoUpdate,
         if not vehicle:
             raise HTTPException(404, "Vehicle not found for this driver")
     return {"ok": True, "vehicle_photo_media_id": payload.media_id}
+
+
+@app.get("/api/vehicle-type-images")
+def get_vehicle_type_images(authorization: Optional[str] = Header(default=None)):
+    auth_user(authorization)
+    with db() as conn:
+        rows = conn.execute("""
+            SELECT vehicle_type, media_id::TEXT AS media_id
+            FROM public.vehicle_type_images
+            ORDER BY vehicle_type
+        """).fetchall()
+    return {"items": [dict(row) for row in rows]}
+
+
+@app.post("/api/admin/vehicle-type-images")
+def save_vehicle_type_image(payload: VehicleTypeImageSave,
+                            authorization: Optional[str] = Header(default=None)):
+    user = auth_user(authorization)
+    require_admin(user)
+    with db() as conn:
+        media = conn.execute("""
+            SELECT id FROM public.media_files
+            WHERE id=%s AND category='vehicle' AND uploaded_by=%s
+        """, (payload.media_id, user["id"])).fetchone()
+        if not media:
+            raise HTTPException(403, "Upload the vehicle image using the admin account first")
+        conn.execute("""
+            INSERT INTO public.vehicle_type_images (vehicle_type, media_id, updated_at)
+            VALUES (%s,%s,NOW())
+            ON CONFLICT (vehicle_type) DO UPDATE SET
+                media_id=EXCLUDED.media_id,
+                updated_at=NOW()
+        """, (payload.vehicle_type, payload.media_id))
+    return {"ok": True, "vehicle_type": payload.vehicle_type, "media_id": payload.media_id}
 
 
 @app.post("/api/admin/drivers/{driver_id}/approve")
