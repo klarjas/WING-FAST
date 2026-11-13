@@ -76,7 +76,7 @@
       const response=await fetch("/api/media/"+encodeURIComponent(id),{headers:authHeaders(),signal:controller.signal});
       if(!response.ok)throw new Error("Vehicle image could not be loaded ("+response.status+")");
       const blob=await response.blob();
-      if(!blob.size||!/^image\\//i.test(blob.type))throw new Error("Vehicle image data is invalid");
+      if(!blob.size||!/^image\//i.test(blob.type))throw new Error("Vehicle image data is invalid");
       const url=URL.createObjectURL(blob);
       vehicleImageObjectUrls.set(id,url);
       return url;
@@ -173,7 +173,7 @@
         const response=await fetch("/api/media/"+encodeURIComponent(mediaId),{headers:authHeaders()});
         if(!response.ok)throw new Error("Vehicle photo unavailable");
         const blob=await response.blob();
-        if(!blob.size||!/^image\\//i.test(blob.type))throw new Error("Invalid vehicle photo");
+        if(!blob.size||!/^image\//i.test(blob.type))throw new Error("Invalid vehicle photo");
         url=URL.createObjectURL(blob);vehiclePhotoObjectUrls.set(mediaId,url);
       }
       img.src=url;
@@ -546,7 +546,7 @@
         const response=await fetch("/api/media/"+encodeURIComponent(mediaId),{headers:authHeaders()});
         if(!response.ok)throw new Error("Image unavailable ("+response.status+")");
         blob=await response.blob();
-        if(!blob.size||!/^image\\//i.test(blob.type))throw new Error("Promotion image data is invalid");
+        if(!blob.size||!/^image\//i.test(blob.type))throw new Error("Promotion image data is invalid");
         await saveCachedPromotionBlob(mediaId,blob);
       }
       const url=URL.createObjectURL(blob);
