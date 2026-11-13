@@ -1194,3 +1194,21 @@ footer{color:#98A2AF!important;border-color:#E7EBF0!important}
 
 /* Hidden state must win over local image display rules. */
 .profile-avatar img.hidden,.vehicle-photo-preview img.hidden{display:none!important}
+
+
+/* Admin-managed default vehicle category imagery */
+.vehicle-option{position:relative!important;overflow:hidden!important}
+.vehicle-option-image{display:block!important;width:100%!important;height:48px!important;object-fit:contain!important;flex:none!important;padding:0 5px!important}
+.vehicle-option-image.hidden{display:none!important}
+.vehicle-options .vehicle-option svg.hidden{display:none!important}
+.vehicle-assets-admin{margin:0 0 18px!important}
+.vehicle-assets-admin>.muted{font-size:11px!important;line-height:1.55!important;margin:-4px 0 14px!important}
+.vehicle-assets-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+.vehicle-asset-card{min-width:0!important;padding:10px!important;border:1px solid #E3E9EF!important;border-radius:17px!important;background:#FFFFFF!important}
+.vehicle-asset-preview{position:relative!important;display:grid!important;place-items:center!important;width:100%!important;height:104px!important;overflow:hidden!important;border-radius:12px!important;background:linear-gradient(145deg,#F7F9FB,#E9EEF3)!important;color:#8895A4!important;font-size:10px!important;text-align:center!important}
+.vehicle-asset-preview img{width:100%!important;height:100%!important;object-fit:contain!important;padding:5px!important}
+.vehicle-asset-meta{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:6px!important;margin-top:9px!important}
+.vehicle-asset-meta strong{font-size:11px!important;color:#273444!important}
+.vehicle-asset-upload{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:30px!important;padding:5px 8px!important;margin:0!important;border-radius:9px!important;background:#EAF5EE!important;color:#167A56!important;border:1px solid #D5E9DC!important;font-size:9px!important;font-weight:800!important;cursor:pointer!important;white-space:nowrap!important}
+.vehicle-asset-upload input{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
+@media(max-width:350px){.vehicle-asset-meta{align-items:flex-start!important;flex-direction:column!important}.vehicle-asset-upload{width:100%!important}}
