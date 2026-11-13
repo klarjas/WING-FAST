@@ -24,7 +24,7 @@ FROM (VALUES
     ('suv','SUV',10),('car','Sedan',20),('tuk_tuk','Tuk-Tuk',30),
     ('motorbike','Motorcycle',40),('van','Van',50)
 ) AS seed(vehicle_type,display_name,sort_order)
-LEFT JOIN public.pricing pr ON pr.vehicle_type=seed.vehicle_type
+LEFT JOIN public.pricing pr ON pr.vehicle_type=seed.vehicle_type AND pr.is_active=TRUE
 LEFT JOIN public.vehicle_type_images vi ON vi.vehicle_type=seed.vehicle_type
 ON CONFLICT (vehicle_type) DO NOTHING;
 
