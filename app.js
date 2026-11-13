@@ -773,6 +773,13 @@
 (() => {
   const dictionaries = {
     km: {
+      "Checking your Telegram account…":"កំពុងពិនិត្យគណនី Telegram…",
+      "Loading vehicle catalogue and photos…":"កំពុងទាញយកបញ្ជីយានយន្ត និងរូបភាព…",
+      "Preparing your screen…":"កំពុងរៀបចំទំព័រកម្មវិធី…",
+      "ACCOUNT VERIFICATION":"កំពុងផ្ទៀងផ្ទាត់គណនី",
+      "VEHICLES AND IMAGES":"យានយន្ត និងរូបភាព",
+      "FINAL CHECK":"ពិនិត្យចុងក្រោយ",
+      "PLEASE WAIT":"សូមរង់ចាំ",
       "Vehicle catalogue":"បញ្ជីយានយន្ត",
       "Add vehicle types, change display names, and set the price charged per kilometre.":"បន្ថែមប្រភេទយានយន្ត ប្ដូរឈ្មោះ និងកំណត់តម្លៃក្នុងមួយគីឡូម៉ែត្រ។",
       "ADD NEW VEHICLE":"បន្ថែមយានយន្តថ្មី",
@@ -936,6 +943,13 @@
       "Block this driver and account?":"តើអ្នកចង់បិទអ្នកបើកបរ និងគណនីនេះមែនទេ?"
     },
     zh: {
+      "Checking your Telegram account…":"正在验证 Telegram 账户…",
+      "Loading vehicle catalogue and photos…":"正在加载车辆目录和图片…",
+      "Preparing your screen…":"正在准备应用界面…",
+      "ACCOUNT VERIFICATION":"账户验证",
+      "VEHICLES AND IMAGES":"车辆和图片",
+      "FINAL CHECK":"最后检查",
+      "PLEASE WAIT":"请稍候",
       "Vehicle catalogue":"车辆目录",
       "Add vehicle types, change display names, and set the price charged per kilometre.":"添加车辆类型、更改显示名称并设置每公里收费。",
       "ADD NEW VEHICLE":"添加新车辆",
