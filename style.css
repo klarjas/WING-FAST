@@ -1191,3 +1191,6 @@ footer{color:#98A2AF!important;border-color:#E7EBF0!important}
   .admin-vehicle-media{width:96px!important;height:78px!important}
   .profile-avatar{width:62px!important;height:62px!important}
 }
+
+/* Hidden state must win over local image display rules. */
+.profile-avatar img.hidden,.vehicle-photo-preview img.hidden{display:none!important}
