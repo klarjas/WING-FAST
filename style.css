@@ -1140,3 +1140,54 @@ footer{color:#98A2AF!important;border-color:#E7EBF0!important}
   .panel,.ride-card,.driver-card,.admin-card,.stat,.vehicle-option,.btn,.bottom-nav-item{transition:none!important}
   button:active,.btn:active,.mini-btn:active{transform:none!important}
 }
+
+
+/* Telegram-native profile photo and vehicle-photo review cards */
+.profile-avatar{
+  position:relative!important;width:68px!important;height:68px!important;flex:none!important;
+  overflow:hidden!important;border-radius:50%!important;display:grid!important;place-items:center!important;
+  background:#E9F3ED!important;border:2px solid #FFFFFF!important;
+  box-shadow:0 0 0 1px #DDE8E1,0 5px 14px rgba(31,45,61,.10)!important;color:#167A56!important;
+}
+.profile-avatar img{
+  position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+  object-fit:cover!important;border-radius:50%!important;display:block!important;
+}
+.profile-avatar span{font-size:25px!important;font-weight:800!important}
+.vehicle-photo-preview{
+  position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;
+  width:100%!important;height:150px!important;margin-top:10px!important;overflow:hidden!important;
+  border:1px dashed #CBD5E1!important;border-radius:17px!important;
+  background:linear-gradient(135deg,#F8FAFC,#EEF2F6)!important;
+  color:#7B8795!important;text-align:center!important;padding:14px!important;font-size:12px!important;
+}
+.vehicle-photo-preview img{width:100%!important;height:100%!important;object-fit:contain!important;display:block!important}
+.vehicle-photo-preview.has-image{border-style:solid!important;background:#FFFFFF!important;padding:4px!important}
+.driver-review-card{padding:14px!important}
+.admin-driver-head{display:flex!important;align-items:center!important;gap:13px!important;min-width:0!important}
+.admin-vehicle-media{
+  position:relative!important;display:grid!important;place-items:center!important;
+  flex:none!important;width:116px!important;height:88px!important;overflow:hidden!important;
+  border:1px solid #E2E8F0!important;border-radius:15px!important;
+  background:linear-gradient(145deg,#F8FAFC,#E9EEF3)!important;
+}
+.admin-vehicle-media img{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:contain!important;padding:4px!important;display:block!important;opacity:0!important}
+.admin-vehicle-media.has-photo img{opacity:1!important}
+.admin-vehicle-placeholder{display:block!important;color:#8290A0!important;font-size:10px!important;text-align:center!important;padding:5px!important}
+.admin-vehicle-media.has-photo .admin-vehicle-placeholder{display:none!important}
+.admin-vehicle-media.photo-error .admin-vehicle-placeholder{display:block!important}
+.admin-driver-data{min-width:0!important;flex:1!important}
+.admin-driver-data strong{display:block!important;font-size:13px!important;line-height:1.4!important;overflow-wrap:anywhere!important}
+.admin-driver-data small{display:block!important;color:#64748B!important;margin-top:5px!important;line-height:1.5!important;overflow-wrap:anywhere!important}
+.vehicle-photo-edit{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  min-height:38px!important;margin:12px 0 2px!important;padding:7px 12px!important;
+  border:1px solid #DCE5DD!important;border-radius:12px!important;
+  background:#F5FAF6!important;color:#167A56!important;
+  font-size:10px!important;font-weight:800!important;letter-spacing:.4px!important;cursor:pointer!important;
+}
+.vehicle-photo-edit input{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
+@media(max-width:360px){
+  .admin-vehicle-media{width:96px!important;height:78px!important}
+  .profile-avatar{width:62px!important;height:62px!important}
+}
