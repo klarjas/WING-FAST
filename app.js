@@ -48,7 +48,7 @@
       else feedback.impactOccurred(style === "soft" ? "soft" : style === "medium" ? "medium" : "light");
     } catch (_) {}
   }
-  const state = { user:null,driver:null,pickup:null,destination:null,map:null,driverMarkers:new Map(),pickupMarker:null,destinationMarker:null,routeLine:null,selectedRouteLine:null,mapMode:"pickup",pickerMode:"pickup",mapCandidate:null,distanceMode:"road",distanceKm:null,liveTimer:null,watchId:null,locationTimer:null,locationPermission:"unknown",locationAsked:false };
+  const state = { user:null,driver:null,pickup:null,destination:null,map:null,driverMarkers:new Map(),driverMarkerAnimations:new Map(),pickupMarker:null,destinationMarker:null,routeLine:null,selectedRouteLine:null,mapMode:"pickup",pickerMode:"pickup",mapCandidate:null,distanceMode:"road",distanceKm:null,liveTimer:null,watchId:null,locationTimer:null,locationPermission:"unknown",locationAsked:false,locationActive:false,locationSending:false,pendingLocation:null,wakeLock:null };
   const authHeaders = () => ({ "Content-Type": "application/json", "Authorization": "tma " + (tg ? tg.initData : "") });
   const vehiclePhotoObjectUrls = new Map();
   async function uploadMediaFile(file, category) {
@@ -280,7 +280,33 @@
   function mapMode(mode){state.mapMode=mode;document.querySelectorAll("[data-map-mode]").forEach(x=>x.classList.toggle("active",x.dataset.mapMode===mode));$("mapStatus").textContent=mode==="pickup"?"Tap the map to set passenger pickup":"Tap the map to set destination";}
   function coordsFromMapLink(s){const patterns=[/[?&](?:q|query|destination|center)=(-?\d+(?:\.\d+)?)[,%2C ]+(-?\d+(?:\.\d+)?)/i,/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/,/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/];for(const re of patterns){const m=String(s).match(re);if(m){const lat=+m[1],lon=+m[2];if(lat>=-90&&lat<=90&&lon>=-180&&lon<=180)return{lat,lon};}}return null;}
   function useMapLink(){const p=coordsFromMapLink($("googleMapsLink").value.trim());if(!p){message("bookingMessage","Could not read coordinates. Paste a Google Maps URL containing coordinates, or latitude,longitude.","error");return;}state.pickerMode="destination";state.mapMode="destination";state.mapCandidate=p;state.map.setView([p.lat,p.lon],17);$("selectedCoordinates").textContent=p.lat.toFixed(5)+", "+p.lon.toFixed(5)+" · Google Maps";$("locationModalTitle").textContent="Choose destination";}
-  async function refreshDrivers(){if(!state.map)return;try{const data=await api("/api/drivers/live"),ids=new Set();data.items.forEach(d=>{ids.add(d.driver_id);const p=[+d.latitude,+d.longitude];let m=state.driverMarkers.get(d.driver_id);if(!m){m=L.marker(p,{icon:mapIcon("driver")}).addTo(state.map);state.driverMarkers.set(d.driver_id,m);}else m.setLatLng(p);m.bindPopup("<b>"+escapeHtml(d.vehicle_model||"WING FAST Driver")+"</b><br>"+escapeHtml(d.plate_number||""));});for(const [id,m] of state.driverMarkers)if(!ids.has(id)){state.map.removeLayer(m);state.driverMarkers.delete(id);}$("driverCount").textContent=data.items.length+" drivers online · refresh 5 sec";if(!$("mapStatus").textContent.startsWith("Tap the map"))$("mapStatus").textContent=data.items.length?"Live drivers on map":"No drivers currently online";await refreshDriverRoute();}catch(_){$("driverCount").textContent="Waiting for live driver locations…";}}
+  function animateDriverMarker(marker, target, driverId) {
+    const existing = state.driverMarkerAnimations.get(driverId);
+    if (existing) cancelAnimationFrame(existing);
+    const from = marker.getLatLng();
+    const start = { lat:from.lat, lng:from.lng };
+    const to = { lat:target[0], lng:target[1] };
+    const startedAt = performance.now();
+    const duration = 900;
+    let frameId = 0;
+    const step = now => {
+      const progress = Math.min(1, (now - startedAt) / duration);
+      const eased = progress * (2 - progress);
+      marker.setLatLng([
+        start.lat + (to.lat - start.lat) * eased,
+        start.lng + (to.lng - start.lng) * eased
+      ]);
+      if (progress < 1) {
+        frameId = requestAnimationFrame(step);
+        state.driverMarkerAnimations.set(driverId, frameId);
+      } else {
+        state.driverMarkerAnimations.delete(driverId);
+      }
+    };
+    frameId = requestAnimationFrame(step);
+    state.driverMarkerAnimations.set(driverId, frameId);
+  }
+  async function refreshDrivers(){if(!state.map)return;try{const data=await api("/api/drivers/live"),ids=new Set();data.items.forEach(d=>{ids.add(d.driver_id);const p=[+d.latitude,+d.longitude];let m=state.driverMarkers.get(d.driver_id);if(!m){m=L.marker(p,{icon:mapIcon("driver")}).addTo(state.map);state.driverMarkers.set(d.driver_id,m);}else animateDriverMarker(m,p,d.driver_id);m.bindPopup("<b>"+escapeHtml(d.vehicle_model||"WING FAST Driver")+"</b><br>"+escapeHtml(d.plate_number||""));});for(const [id,m] of state.driverMarkers)if(!ids.has(id)){const frame=state.driverMarkerAnimations.get(id);if(frame)cancelAnimationFrame(frame);state.driverMarkerAnimations.delete(id);state.map.removeLayer(m);state.driverMarkers.delete(id);}$("driverCount").textContent=data.items.length+" drivers online · refresh 5 sec";if(!$("mapStatus").textContent.startsWith("Tap the map"))$("mapStatus").textContent=data.items.length?"Live drivers on map":"No drivers currently online";await refreshDriverRoute();}catch(_){$("driverCount").textContent="Waiting for live driver locations…";}}
   async function refreshDriverRoute(){
     try {
       const data = await api("/api/bookings/mine");
@@ -314,12 +340,12 @@
     if(!box)return;
     const cards=[...box.querySelectorAll("[data-vehicle-choice]")];
     if(!cards.length)return;
-    const center=box.getBoundingClientRect().left+box.clientWidth/2;
+    const boxRect=box.getBoundingClientRect();
+    const center=boxRect.left+box.clientLeft+box.clientWidth/2;
     let nearest=null,nearestDistance=Infinity;
     cards.forEach(card=>{
       const rect=card.getBoundingClientRect();
-      const cardCenter=rect.left+rect.width/2;
-      const distance=cardCenter-center;
+      const distance=(rect.left+rect.width/2)-center;
       const offset=distance/Math.max(rect.width,1);
       card.style.setProperty("--coverflow-offset",String(Math.max(-1.5,Math.min(1.5,offset))));
       card.classList.toggle("is-centered",Math.abs(offset)<.5);
@@ -346,7 +372,11 @@
       const box=$("vehicleOptions");
       const card=box?.querySelector('[data-vehicle-choice="'+CSS.escape(next)+'"]');
       if(box&&card){
-        const left=card.offsetLeft-(box.clientWidth-card.offsetWidth)/2;
+        const boxRect=box.getBoundingClientRect();
+        const cardRect=card.getBoundingClientRect();
+        const viewportCenter=boxRect.left+box.clientLeft+box.clientWidth/2;
+        const cardCenter=cardRect.left+cardRect.width/2;
+        const left=Math.max(0,box.scrollLeft+cardCenter-viewportCenter);
         box.scrollTo({left,behavior:"smooth"});
       }
     }
@@ -550,24 +580,110 @@
     } catch (e) { message("driverMessage", e.message, "error"); haptic("error"); }
     finally { button.disabled = false; }
   }
-  async function sendLocation(pos) {
-    try { await api("/api/driver/location", { method:"POST", body:JSON.stringify({
-      lat:pos.coords.latitude, lon:pos.coords.longitude, accuracy:pos.coords.accuracy
-    })}); } catch (e) { message("driverMessage", e.message, "error"); stopLocation(); }
+  async function setWakeLock(enabled) {
+    if (!("wakeLock" in navigator)) return;
+    try {
+      if (enabled && state.locationActive && document.visibilityState === "visible" && !state.wakeLock) {
+        const lock = await navigator.wakeLock.request("screen");
+        state.wakeLock = lock;
+        lock.addEventListener("release", () => {
+          if (state.wakeLock === lock) state.wakeLock = null;
+        }, { once:true });
+      } else if (!enabled && state.wakeLock) {
+        const lock = state.wakeLock;
+        state.wakeLock = null;
+        await lock.release();
+      }
+    } catch (error) {
+      console.warn("Screen Wake Lock is unavailable:", error);
+    }
+  }
+  async function pushDriverCoords(position) {
+    const coords = position && position.coords ? position.coords : position;
+    if (!coords) return;
+    const lat = Number(coords.latitude ?? coords.lat);
+    const lon = Number(coords.longitude ?? coords.lon);
+    const accuracy = coords.accuracy ?? null;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return;
+    state.pendingLocation = { lat, lon, accuracy:Number.isFinite(Number(accuracy)) ? Number(accuracy) : null };
+    if (state.locationSending) return;
+    state.locationSending = true;
+    try {
+      while (state.locationActive && state.pendingLocation) {
+        const latest = state.pendingLocation;
+        state.pendingLocation = null;
+        try {
+          await api("/api/driver/location", { method:"POST", body:JSON.stringify(latest) });
+        } catch (error) {
+          message("driverMessage", "Location update delayed: " + (error.message || "connection problem"), "error");
+        }
+      }
+    } finally {
+      state.locationSending = false;
+    }
+  }
+  async function sendLocation(position) {
+    return pushDriverCoords(position);
+  }
+  async function pollAndSendDriverLocation() {
+    if (!state.locationActive) return;
+    try {
+      const location = await getTelegramLocation();
+      if (location) await pushDriverCoords(location);
+    } catch (error) {
+      console.warn("Telegram live location refresh failed; browser GPS remains active:", error);
+    }
   }
   function stopLocation() {
-    if (state.watchId !== null) navigator.geolocation.clearWatch(state.watchId);
-    state.watchId = null; $("shareLocationBtn").textContent = "GO ONLINE";
+    state.locationActive = false;
+    if (state.watchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(state.watchId);
+    state.watchId = null;
+    if (state.locationTimer !== null) clearInterval(state.locationTimer);
+    state.locationTimer = null;
+    state.pendingLocation = null;
+    void setWakeLock(false);
+    const button = $("shareLocationBtn");
+    if (button) button.textContent = "GO ONLINE";
   }
-  function startLocation() {
-    if (!navigator.geolocation) { alert("GPS is not available."); return; }
-    if (state.watchId !== null) { stopLocation(); return; }
-    $("shareLocationBtn").textContent = "CONNECTING…";
-    state.watchId = navigator.geolocation.watchPosition(sendLocation, (err) => {
-      stopLocation(); alert("Location error: " + err.message);
-    }, { enableHighAccuracy:true, maximumAge:5000, timeout:15000 });
-    $("shareLocationBtn").textContent = "GO OFFLINE";
+  async function startLocation() {
+    if (state.locationActive) { stopLocation(); return; }
+    const hasBrowserGps = !!navigator.geolocation;
+    const hasTelegramGps = !!(tg && tg.LocationManager);
+    if (!hasBrowserGps && !hasTelegramGps) { alert("GPS is not available in this Telegram client."); return; }
+    state.locationActive = true;
+    const button = $("shareLocationBtn");
+    if (button) button.textContent = "CONNECTING…";
+    void setWakeLock(true);
+    try {
+      const initialLocation = await getTelegramLocation();
+      if (initialLocation) await pushDriverCoords(initialLocation);
+    } catch (error) {
+      console.warn("Telegram location permission/read failed:", error);
+    }
+    if (!state.locationActive) return;
+    if (hasBrowserGps) {
+      state.watchId = navigator.geolocation.watchPosition(
+        position => { void sendLocation(position); },
+        error => {
+          if (state.watchId !== null) navigator.geolocation.clearWatch(state.watchId);
+          state.watchId = null;
+          message("driverMessage", "Browser GPS paused: " + error.message, "error");
+          if (!hasTelegramGps) stopLocation();
+        },
+        { enableHighAccuracy:true, maximumAge:3000, timeout:20000 }
+      );
+    }
+    if (hasTelegramGps) {
+      state.locationTimer = setInterval(() => { void pollAndSendDriverLocation(); }, 4000);
+    }
+    if (!hasBrowserGps && !hasTelegramGps) { stopLocation(); return; }
+    if (button) button.textContent = "GO OFFLINE";
   }
+  document.addEventListener("visibilitychange", () => {
+    if (!state.locationActive || document.visibilityState !== "visible") return;
+    void setWakeLock(true);
+    void pollAndSendDriverLocation();
+  });
   async function loadRequests() {
     const box = $("requestList"); box.innerHTML = '<div class="empty-state">Loading requests…</div>';
     try {
