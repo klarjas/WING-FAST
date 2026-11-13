@@ -47,3 +47,8 @@ The backend requires `SUPABASE_DB_URL`; it does not create tables automatically.
 - Digital payment is currently a payment-method selection only. No payment gateway is connected.
 - Fare calculation, geocoding, map routing, push notifications and production monitoring are not yet integrated.
 - Never expose the Supabase database password or connection string in GitHub or chat.
+
+
+## Vehicle photo update
+
+Before deploying the vehicle-photo update, run migrations/20261113_vehicle_photos.sql once in the Supabase SQL Editor. This adds the vehicle photo media reference used by driver registration and the admin driver review screen. Vehicle images are stored in the configured Telegram storage channel through the existing /api/media endpoint; the database stores only the media reference.
