@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#F5F7FA">
   <title>WING FAST</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/static/style.css?v=20261113-photos">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -93,6 +93,9 @@
             <label>Vehicle type</label><select id="driverVehicle"><option value="tuk_tuk">Tuk Tuk</option><option value="car">Sedan</option><option value="suv">SUV</option><option value="motorbike">Motorcycle</option><option value="van">Van</option></select>
             <label>Vehicle model</label><input id="driverModel" placeholder="e.g. Toyota Prius">
             <label>License plate</label><input id="driverPlate" placeholder="e.g. ភ្នំពេញ 2AB-1234">
+            <label for="driverVehiclePhoto">Vehicle photo</label>
+            <input id="driverVehiclePhoto" type="file" accept="image/jpeg,image/png,image/webp">
+            <div id="driverVehiclePhotoPreview" class="vehicle-photo-preview"><span>Upload a clear vehicle photo for admin review</span><img id="driverVehiclePhotoPreviewImage" class="hidden" alt="Vehicle photo preview"></div>
             <button id="applyDriverBtn" class="btn primary full">SUBMIT FOR APPROVAL</button><p id="driverMessage" class="message"></p>
           </div>
           <div id="driverActivePanel" class="hidden">
@@ -121,7 +124,7 @@
         <section id="profileView" class="view hidden">
           <div class="section-heading"><div><span class="eyebrow">YOUR ACCOUNT</span><h2>Profile</h2></div></div>
           <div class="panel profile-card">
-            <div class="profile-avatar" id="profileAvatar">W</div>
+            <div class="profile-avatar" id="profileAvatar"><span id="profileAvatarFallback">W</span><img id="profileAvatarImage" class="hidden" alt="Telegram profile photo" referrerpolicy="no-referrer"></div>
             <div class="profile-main"><h3 id="profileName">WING FAST User</h3><p id="profileUsername" class="muted">@username</p><span id="profileRole" class="profile-role">Passenger</span></div>
           </div>
           <div class="panel profile-details">
@@ -138,6 +141,6 @@
   </div>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script>if(window.lucide) window.lucide.createIcons();</script>
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=20261113-photos"></script>
 </body>
 </html>
