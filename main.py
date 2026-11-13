@@ -262,14 +262,14 @@ class DriverApplication(BaseModel):
     plate_number: str = Field(min_length=2, max_length=30)
     vehicle_photo_media_id: str = Field(min_length=36, max_length=36)
 
-
-class VehiclePhotoUpdate(BaseModel):
-    media_id: str = Field(min_length=36, max_length=36)
-
     @field_validator("phone", "vehicle_model", "plate_number")
     @classmethod
     def trim(cls, value):
         return value.strip()
+
+
+class VehiclePhotoUpdate(BaseModel):
+    media_id: str = Field(min_length=36, max_length=36)
 
 
 class PromotionSave(BaseModel):
@@ -642,7 +642,7 @@ def admin_drivers(authorization: Optional[str] = Header(default=None)):
                    v.photo_media_id::TEXT AS vehicle_photo_media_id
             FROM public.drivers d JOIN public.users u ON u.id=d.user_id
             LEFT JOIN LATERAL (
-                SELECT plate_number, model FROM public.vehicles
+                SELECT plate_number, model, photo_media_id FROM public.vehicles
                 WHERE driver_id=d.id ORDER BY created_at DESC LIMIT 1
             ) v ON TRUE
             ORDER BY d.created_at DESC LIMIT 200
@@ -662,7 +662,7 @@ def admin_update_vehicle_photo(driver_id: str, payload: VehiclePhotoUpdate,
         if not media:
             raise HTTPException(404, "Vehicle photo not found")
         vehicle = conn.execute("""
-            UPDATE public.vehicles SET photo_media_id=%s, updated_at=NOW()
+            UPDATE public.vehicles SET photo_media_id=%s
             WHERE id=(
                 SELECT id FROM public.vehicles
                 WHERE driver_id=%s ORDER BY created_at DESC LIMIT 1
