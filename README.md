@@ -52,3 +52,8 @@ The backend requires `SUPABASE_DB_URL`; it does not create tables automatically.
 ## Vehicle photo update
 
 Before deploying the vehicle-photo update, run migrations/20261113_vehicle_photos.sql once in the Supabase SQL Editor. This adds the vehicle photo media reference used by driver registration and the admin driver review screen. Vehicle images are stored in the configured Telegram storage channel through the existing /api/media endpoint; the database stores only the media reference.
+
+
+## Vehicle category display images and last page
+
+Run migrations/20261113_vehicle_type_images.sql once in the Supabase SQL Editor. The Admin panel then lets administrators upload or replace the default SUV, Sedan, Tuk-Tuk, Motorcycle and Van images shown on the Ride screen. The last visited app page and chosen vehicle type are saved locally on the user's device.
