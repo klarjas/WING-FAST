@@ -14,6 +14,31 @@
     }
   }
   const $ = (id) => document.getElementById(id);
+  function setLoadingStatus(message, detail = "PLEASE WAIT") {
+    const title = $("loadingMessage"), note = $("loadingDetail");
+    if (title) title.textContent = message;
+    if (note) note.textContent = detail;
+  }
+  function waitForImage(img, timeoutMs = 18000) {
+    if (!img) return Promise.resolve(false);
+    if (img.complete) return Promise.resolve(img.naturalWidth > 0);
+    return new Promise(resolve => {
+      let finished = false;
+      const finish = ok => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        img.removeEventListener("load", onLoad);
+        img.removeEventListener("error", onError);
+        resolve(ok);
+      };
+      const onLoad = () => finish(img.naturalWidth > 0);
+      const onError = () => finish(false);
+      const timer = setTimeout(() => finish(false), timeoutMs);
+      img.addEventListener("load", onLoad, {once:true});
+      img.addEventListener("error", onError, {once:true});
+    });
+  }
   let locationCloseTimer = null;
   function haptic(style = "light") {
     try {
@@ -45,27 +70,43 @@
   async function getVehicleImageUrl(mediaId){
     const id=String(mediaId);
     if(vehicleImageObjectUrls.has(id))return vehicleImageObjectUrls.get(id);
-    const response=await fetch("/api/media/"+encodeURIComponent(id),{headers:authHeaders()});
-    if(!response.ok)throw new Error("Vehicle image could not be loaded");
-    const url=URL.createObjectURL(await response.blob());
-    vehicleImageObjectUrls.set(id,url);return url;
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),25000);
+    try{
+      const response=await fetch("/api/media/"+encodeURIComponent(id),{headers:authHeaders(),signal:controller.signal});
+      if(!response.ok)throw new Error("Vehicle image could not be loaded ("+response.status+")");
+      const blob=await response.blob();
+      if(!blob.size||!/^image\\//i.test(blob.type))throw new Error("Vehicle image data is invalid");
+      const url=URL.createObjectURL(blob);
+      vehicleImageObjectUrls.set(id,url);
+      return url;
+    }finally{clearTimeout(timeout);}
   }
-  function renderRideVehicleOptions(items){
+  async function renderRideVehicleOptions(items){
     const box=$("vehicleOptions");if(!box)return;
     const select=$("vehicleType");
     if(select)select.innerHTML='<option value="all">All vehicles</option>'+(items||[]).map(item=>'<option value="'+escapeHtml(item.vehicle_type)+'">'+escapeHtml(item.display_name)+'</option>').join("");
     box.innerHTML=(items||[]).map(item=>{
       const type=escapeHtml(item.vehicle_type),name=escapeHtml(item.display_name);
       return '<button type="button" class="vehicle-option" data-vehicle-choice="'+type+'" aria-pressed="false">'+
-        '<div class="vehicle-option-art">'+(item.media_id?'<img data-catalog-image="'+type+'" alt="'+name+'">':'<span class="vehicle-option-fallback" aria-hidden="true">🚘</span>')+'</div>'+
+        '<div class="vehicle-option-art">'+(item.media_id?'<img data-catalog-image="'+type+'" alt="'+name+'" loading="eager">':'<span class="vehicle-option-fallback" aria-hidden="true">🚘</span>')+'</div>'+
         '<span class="vehicle-option-name">'+name+'</span><small class="vehicle-option-price">'+moneyPerKm(item.price_per_km)+'</small></button>';
     }).join("")||'<div class="empty-state">No vehicles available.</div>';
-    Promise.all([...box.querySelectorAll("[data-catalog-image]")].map(async img=>{
+    const jobs=[...box.querySelectorAll("[data-catalog-image]")].map(async img=>{
       const item=items.find(row=>row.vehicle_type===img.dataset.catalogImage);
-      try{img.src=await getVehicleImageUrl(item.media_id);}
-      catch(_){img.outerHTML='<span class="vehicle-option-fallback">🚘</span>';}
-    }));
+      try{
+        if(!item||!item.media_id)throw new Error("Vehicle image is missing");
+        img.src=await getVehicleImageUrl(item.media_id);
+        if(!await waitForImage(img))throw new Error("Vehicle image did not finish loading");
+        img.classList.add("is-loaded");
+      }catch(error){
+        console.warn("Vehicle image unavailable:",img.dataset.catalogImage,error);
+        img.outerHTML='<span class="vehicle-option-fallback" aria-hidden="true">🚘</span>';
+      }
+    });
+    await Promise.all(jobs);
   }
+
   function renderDriverVehicleOptions(items){
     const select=$("driverVehicle");if(!select)return;
     const previous=select.value;
@@ -75,17 +116,15 @@
     else select.innerHTML='<option value="">No vehicles available</option>';
   }
   async function loadVehicleCatalog(){
-    try{
-      const data=await api("/api/vehicle-catalog");vehicleCatalog=data.items||[];
-      renderRideVehicleOptions(vehicleCatalog);renderDriverVehicleOptions(vehicleCatalog);
-      let saved="all";try{saved=localStorage.getItem("wing_fast_vehicle_type")||"all";}catch(_){}
-      chooseVehicle(vehicleCatalog.some(item=>item.vehicle_type===saved)?saved:"all");
-    }catch(error){
-      console.warn("Could not load vehicle catalogue:",error);
-      const legacy=Object.entries(defaultVehicleLabels).map(([vehicle_type,display_name])=>({vehicle_type,display_name,price_per_km:0,media_id:null}));
-      vehicleCatalog=legacy;renderRideVehicleOptions(legacy);renderDriverVehicleOptions(legacy);chooseVehicle("all");
-    }
+    const data=await api("/api/vehicle-catalog");
+    if(!data||!Array.isArray(data.items))throw new Error("Vehicle catalogue data is incomplete. Please try again.");
+    vehicleCatalog=data.items;
+    renderDriverVehicleOptions(vehicleCatalog);
+    await renderRideVehicleOptions(vehicleCatalog);
+    let saved="all";try{saved=localStorage.getItem("wing_fast_vehicle_type")||"all";}catch(_){}
+    chooseVehicle(vehicleCatalog.some(item=>item.vehicle_type===saved)?saved:"all");
   }
+
   async function loadAdminVehicleCatalog(){
     const box=$("vehicleCatalogList");if(!box)return;
     try{
@@ -103,11 +142,15 @@
       }).join("")||'<div class="empty-state">No vehicles have been added yet.</div>';
       await Promise.all([...box.querySelectorAll("[data-admin-catalog-image]")].map(async img=>{
         const item=items.find(row=>row.vehicle_type===img.dataset.adminCatalogImage);
-        try{img.src=await getVehicleImageUrl(item.media_id);}
-        catch(_){img.closest(".vehicle-catalog-image").innerHTML="<span>Image unavailable</span>";}
+        try{
+          img.src=await getVehicleImageUrl(item.media_id);
+          if(!await waitForImage(img))throw new Error("Image failed");
+          img.classList.add("is-loaded");
+        }catch(_){img.closest(".vehicle-catalog-image").innerHTML="<span>Image unavailable</span>";}
       }));
     }catch(error){box.innerHTML='<div class="empty-state">'+escapeHtml(error.message||"Could not load vehicle catalogue")+'</div>';}
   }
+
   function slugForVehicleName(name){
     const base=String(name||"").normalize("NFKD").toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,26);
     return (base||"vehicle")+"_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,5);
@@ -122,22 +165,23 @@
     await loadAdminVehicleCatalog();await loadVehicleCatalog();
   }
   async function loadVehiclePhotoImage(img) {
-    const mediaId = img && img.dataset.vehicleMedia;
-    if (!mediaId) return;
-    try {
-      let url = vehiclePhotoObjectUrls.get(mediaId);
-      if (!url) {
-        const response = await fetch("/api/media/" + encodeURIComponent(mediaId), { headers:authHeaders() });
-        if (!response.ok) throw new Error("Vehicle photo unavailable");
-        url = URL.createObjectURL(await response.blob());
-        vehiclePhotoObjectUrls.set(mediaId, url);
+    const mediaId=img&&img.dataset.vehicleMedia;
+    if(!mediaId)return;
+    try{
+      let url=vehiclePhotoObjectUrls.get(mediaId);
+      if(!url){
+        const response=await fetch("/api/media/"+encodeURIComponent(mediaId),{headers:authHeaders()});
+        if(!response.ok)throw new Error("Vehicle photo unavailable");
+        const blob=await response.blob();
+        if(!blob.size||!/^image\\//i.test(blob.type))throw new Error("Invalid vehicle photo");
+        url=URL.createObjectURL(blob);vehiclePhotoObjectUrls.set(mediaId,url);
       }
-      img.src = url;
+      img.src=url;
+      if(!await waitForImage(img))throw new Error("Vehicle photo did not finish loading");
       img.closest(".admin-vehicle-media")?.classList.add("has-photo");
-    } catch (_) {
-      img.closest(".admin-vehicle-media")?.classList.add("photo-error");
-    }
+    }catch(_){img.closest(".admin-vehicle-media")?.classList.add("photo-error");}
   }
+
   function renderProfileAvatar(user, displayName) {
     const image = $("profileAvatarImage");
     const fallback = $("profileAvatarFallback");
@@ -190,30 +234,30 @@
       return canOpenView(saved) ? saved : "ride";
     } catch (_) { return "ride"; }
   }
-  function setView(view) {
-    const allowedViews = ["ride","activity","profile","driver","admin"];
-    if (!allowedViews.includes(view) || !canOpenView(view)) view = "ride";
-    try { localStorage.setItem("wing_fast_last_view", view); } catch (_) {}
-    document.querySelectorAll(".bottom-nav .tab").forEach((button) => {
-      const active = button.dataset.view === view;
-      button.classList.toggle("active", active);
-      if (active) button.setAttribute("aria-current", "page");
-      else button.removeAttribute("aria-current");
+  function setView(view, options = {}) {
+    const allowedViews=["ride","activity","profile","driver","admin"];
+    if(!allowedViews.includes(view)||!canOpenView(view))view="ride";
+    try{localStorage.setItem("wing_fast_last_view",view);}catch(_){}
+    document.querySelectorAll(".bottom-nav .tab").forEach(button=>{
+      const active=button.dataset.view===view;
+      button.classList.toggle("active",active);
+      if(active)button.setAttribute("aria-current","page");else button.removeAttribute("aria-current");
     });
-    ["ride","activity","profile","driver","admin"].forEach((name) => {
-      const panel = $(name + "View");
-      if (panel) panel.classList.toggle("hidden", name !== view);
+    ["ride","activity","profile","driver","admin"].forEach(name=>{
+      const panel=$(name+"View");if(panel)panel.classList.toggle("hidden",name!==view);
     });
-    const activePanel = $(view + "View");
-    if (activePanel) {
+    const activePanel=$(view+"View");
+    if(activePanel){
       activePanel.classList.remove("ios-view-enter");
       void activePanel.offsetWidth;
       activePanel.classList.add("ios-view-enter");
     }
     document.querySelector("main")?.scrollTo({top:0,behavior:"instant"});
-    if (view === "activity") loadActivity();
-    if (view === "driver") loadDriverView();
-    if (view === "admin") loadAdmin();
+    if(options.loadData!==false){
+      if(view==="activity")loadActivity();
+      if(view==="driver")loadDriverView();
+      if(view==="admin")loadAdmin();
+    }
   }
 
   function mapIcon(type){const h=type==="driver"?'<div class="driver-marker">🚕</div>':type==="pickup"?'<div class="pickup-marker"></div>':'<div class="destination-marker"></div>';return L.divIcon({html:h,className:"",iconSize:type==="driver"?[34,34]:[18,18],iconAnchor:type==="driver"?[17,17]:[9,9]});}
@@ -311,32 +355,49 @@
   async function checkLocationPermission(){if(!navigator.permissions||!navigator.permissions.query)return;try{const p=await navigator.permissions.query({name:"geolocation"});state.locationPermission=p.state;p.onchange=()=>{state.locationPermission=p.state;};}catch(_){} }
 
 
-  async function boot() {
-    $("loading").classList.remove("hidden");
-    $("errorPanel").classList.add("hidden");
+  async function boot(){
+    $("loading").classList.remove("hidden","is-leaving");
     $("appContent").classList.add("hidden");
-    try {
-      if (!tg && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") throw new Error("Please open WING FAST from its Telegram bot.");
-      const result = await api("/api/me");
-      state.user = result.user; state.driver = result.driver;
-      const displayName = [state.user.first_name, state.user.last_name].filter(Boolean).join(" ") || state.user.full_name || "WING FAST User";
-      $("profileName").textContent = displayName;
-      renderProfileAvatar(state.user, displayName);
-      $("profileUsername").textContent = state.user.username ? "@" + state.user.username.replace(/^@/,"") : "Telegram account";
-      $("profileRole").textContent = ({admin:"Admin",driver:"Driver",driver_pending:"Driver pending",passenger:"Passenger"})[state.user.role] || "WING FAST member";
-      $("profilePhone").textContent = state.user.phone || "Not added";
-      $("profileTelegramId").textContent = state.user.telegram_user_id || state.user.id || "—";
-      $("profileStatus").textContent = state.user.account_status || "Active";
-      if (["driver","driver_pending"].includes(state.user.role) || state.driver) $("profileDriverAction").classList.remove("hidden");
-      if (state.user.role === "admin") $("profileAdminAction").classList.remove("hidden");
-      $("loading").classList.add("hidden"); $("errorPanel").classList.add("hidden"); $("appContent").classList.remove("hidden");
+    $("appContent").classList.remove("ios-app-enter");
+    $("errorPanel").classList.add("hidden");
+    setLoadingStatus("Checking your Telegram account…","ACCOUNT VERIFICATION");
+    try{
+      if(!tg&&location.hostname!=="localhost"&&location.hostname!=="127.0.0.1")throw new Error("Please open WING FAST from its Telegram bot.");
+      const result=await api("/api/me");
+      state.user=result.user;state.driver=result.driver;
+      const displayName=[state.user.first_name,state.user.last_name].filter(Boolean).join(" ")||state.user.full_name||"WING FAST User";
+      $("profileName").textContent=displayName;
+      renderProfileAvatar(state.user,displayName);
+      $("profileUsername").textContent=state.user.username?"@"+state.user.username.replace(/^@/,""):"Telegram account";
+      $("profileRole").textContent=({admin:"Admin",driver:"Driver",driver_pending:"Driver pending",passenger:"Passenger"})[state.user.role]||"WING FAST member";
+      $("profilePhone").textContent=state.user.phone||"Not added";
+      $("profileTelegramId").textContent=state.user.telegram_user_id||state.user.id||"—";
+      $("profileStatus").textContent=state.user.account_status||"Active";
+      if(["driver","driver_pending"].includes(state.user.role)||state.driver)$("profileDriverAction").classList.remove("hidden");
+      if(state.user.role==="admin")$("profileAdminAction").classList.remove("hidden");
       checkLocationPermission();
-      try { const savedVehicle = localStorage.getItem("wing_fast_vehicle_type"); if (savedVehicle) chooseVehicle(savedVehicle); } catch (_) {}
-      loadPromotion();
-      await loadVehicleCatalog();
-      setView(getSavedView());
-    } catch (e) { showError(e); }
+
+      setLoadingStatus("Loading vehicle catalogue and photos…","VEHICLES AND IMAGES");
+      await Promise.all([loadVehicleCatalog(),loadPromotion()]);
+
+      const initialView=getSavedView();
+      setLoadingStatus("Preparing your screen…","FINAL CHECK");
+      if(initialView==="activity")await loadActivity();
+      else if(initialView==="driver")await loadDriverView();
+      else if(initialView==="admin")await loadAdmin();
+      else if(initialView==="profile"&&$("profileAvatarImage")?.getAttribute("src"))await waitForImage($("profileAvatarImage"),7000);
+      setView(initialView,{loadData:false});
+
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      $("appContent").classList.remove("hidden");
+      $("appContent").classList.add("ios-app-enter");
+      $("loading").classList.add("is-leaving");
+      await new Promise(resolve=>setTimeout(resolve,360));
+      $("loading").classList.add("hidden");
+      $("loading").classList.remove("is-leaving");
+    }catch(error){showError(error);}
   }
+
   function locate(){openLocationPicker("pickup");}
   async function bookRide() {
     const destination = $("destination").value.trim();
@@ -367,14 +428,15 @@
     try { await api("/api/bookings/" + encodeURIComponent(id) + "/cancel", { method:"POST" }); loadActivity(); }
     catch (e) { alert(e.message); }
   }
-  async function loadDriverView() {
-    const status = state.driver ? state.driver.status : "not_registered";
-    $("driverStatus").textContent = status.replace("_"," ").toUpperCase();
-    $("driverApplyPanel").classList.toggle("hidden", status === "approved");
-    $("driverActivePanel").classList.toggle("hidden", status !== "approved");
-    if (status === "approved") loadRequests();
-    else if (status === "pending") message("driverMessage", "Your application is waiting for admin approval.");
+  async function loadDriverView(){
+    const status=state.driver?state.driver.status:"not_registered";
+    $("driverStatus").textContent=status.replace("_"," ").toUpperCase();
+    $("driverApplyPanel").classList.toggle("hidden",status==="approved");
+    $("driverActivePanel").classList.toggle("hidden",status!=="approved");
+    if(status==="approved")await loadRequests();
+    else if(status==="pending")message("driverMessage","Your application is waiting for admin approval.");
   }
+
   async function applyDriver() {
     const file = $("driverVehiclePhoto").files[0];
     if (!file) { message("driverMessage", "Please upload a clear vehicle photo.", "error"); return; }
@@ -476,54 +538,56 @@
       });
     } catch (_) {}
   }
-  async function loadPromotionImage(mediaId, targetId) {
-    const target = $(targetId);
-    if (!target) return;
-    try {
-      let blob = await getCachedPromotionBlob(mediaId);
-      if (!blob) {
-        const response = await fetch("/api/media/" + encodeURIComponent(mediaId), {headers: authHeaders()});
-        if (!response.ok) throw new Error("Image unavailable");
-        blob = await response.blob();
-        await saveCachedPromotionBlob(mediaId, blob);
+  async function loadPromotionImage(mediaId,targetId){
+    const target=$(targetId);if(!target)return false;
+    try{
+      let blob=await getCachedPromotionBlob(mediaId);
+      if(!blob){
+        const response=await fetch("/api/media/"+encodeURIComponent(mediaId),{headers:authHeaders()});
+        if(!response.ok)throw new Error("Image unavailable ("+response.status+")");
+        blob=await response.blob();
+        if(!blob.size||!/^image\\//i.test(blob.type))throw new Error("Promotion image data is invalid");
+        await saveCachedPromotionBlob(mediaId,blob);
       }
-      const url = URL.createObjectURL(blob);
-      if (targetId === "promotionImage") {
-        if (promotionObjectUrl) URL.revokeObjectURL(promotionObjectUrl);
-        promotionObjectUrl = url;
-        target.onload = () => $("promotionBanner").classList.add("has-image");
-        target.onerror = () => $("promotionBanner").classList.remove("has-image");
-        target.src = url;
-      } else {
-        target.innerHTML = '<img src="' + url + '" alt="Current promotion">';
+      const url=URL.createObjectURL(blob);
+      if(targetId==="promotionImage"){
+        if(promotionObjectUrl)URL.revokeObjectURL(promotionObjectUrl);
+        promotionObjectUrl=url;target.src=url;
+        if(!await waitForImage(target))throw new Error("Promotion image did not finish loading");
+        $("promotionBanner").classList.add("has-image");
+      }else{
+        target.innerHTML='<img src="'+url+'" alt="Current promotion">';
+        if(!await waitForImage(target.querySelector("img")))throw new Error("Promotion preview did not finish loading");
       }
-    } catch (_) {
-      if (targetId === "promotionImage") {
-        $("promotionBanner").classList.remove("has-image");
-        target.removeAttribute("src");
-      } else target.textContent = "Image preview unavailable";
+      return true;
+    }catch(error){
+      if(targetId==="promotionImage"){
+        $("promotionBanner").classList.remove("has-image");target.removeAttribute("src");
+      }else target.textContent="Image preview unavailable";
+      console.warn("Promotion image unavailable:",error);return false;
     }
   }
-  async function loadPromotion() {
-    try {
-      const data = await api("/api/promotions/active");
-      const p = data.promotion;
-      if (!p) {
+  async function loadPromotion(){
+    try{
+      const data=await api("/api/promotions/active"),p=data.promotion;
+      if(!p){
         $("promotionBanner").classList.remove("has-image");
         $("promotionImage").removeAttribute("src");
-        $("adminPromotionPreview").innerHTML = '<span>No promotion image</span>';
-        $("removePromotionBtn").classList.add("hidden");
-        return;
+        $("adminPromotionPreview").innerHTML='<span>No promotion image</span>';
+        $("removePromotionBtn").classList.add("hidden");return;
       }
-      await loadPromotionImage(p.media_id, "promotionImage");
-      await loadPromotionImage(p.media_id, "adminPromotionPreview");
-      $("removePromotionBtn").classList.remove("hidden");
-    } catch (e) {
+      await loadPromotionImage(p.media_id,"promotionImage");
+      if(state.user&&state.user.role==="admin"){
+        await loadPromotionImage(p.media_id,"adminPromotionPreview");
+        $("removePromotionBtn").classList.remove("hidden");
+      }
+    }catch(error){
       $("promotionBanner").classList.remove("has-image");
       $("promotionImage").removeAttribute("src");
-      if ($("promotionMessage")) message("promotionMessage", e.message, "error");
+      if($("promotionMessage"))message("promotionMessage",error.message,"error");
     }
   }
+
   async function savePromotion() {
     const file = $("promotionUpload").files[0];
     if (!file) { message("promotionMessage", "Choose an image first.", "error"); return; }
