@@ -38,6 +38,68 @@
     if (!response.ok || !data.media || !data.media.id) throw new Error(data.detail || "Image upload failed.");
     return data.media;
   }
+  const vehicleTypeImageUrls = new Map();
+  const vehicleTypeLabels = { suv:"SUV", car:"Sedan", tuk_tuk:"Tuk-Tuk", motorbike:"Motorcycle", van:"Van" };
+  async function getVehicleTypeImageUrl(mediaId) {
+    const id = String(mediaId);
+    if (vehicleTypeImageUrls.has(id)) return vehicleTypeImageUrls.get(id);
+    const response = await fetch("/api/media/" + encodeURIComponent(id), { headers:authHeaders() });
+    if (!response.ok) throw new Error("Vehicle image could not be loaded");
+    const url = URL.createObjectURL(await response.blob());
+    vehicleTypeImageUrls.set(id, url);
+    return url;
+  }
+  async function loadVehicleTypeImages() {
+    try {
+      const data = await api("/api/vehicle-type-images");
+      const images = new Map((data.items || []).map(item => [item.vehicle_type, item.media_id]));
+      await Promise.all(Object.keys(vehicleTypeLabels).map(async type => {
+        const button = document.querySelector('[data-vehicle-choice="' + type + '"]');
+        if (!button) return;
+        const image = button.querySelector("[data-vehicle-image]");
+        const icon = button.querySelector("svg");
+        const mediaId = images.get(type);
+        if (!image) return;
+        if (!mediaId) {
+          image.classList.add("hidden");
+          image.removeAttribute("src");
+          icon?.classList.remove("hidden");
+          return;
+        }
+        try {
+          image.src = await getVehicleTypeImageUrl(mediaId);
+          image.classList.remove("hidden");
+          icon?.classList.add("hidden");
+        } catch (error) {
+          console.warn("Vehicle category image unavailable:", type, error);
+          image.classList.add("hidden");
+          icon?.classList.remove("hidden");
+        }
+      }));
+    } catch (error) {
+      console.warn("Could not load vehicle category images:", error);
+    }
+  }
+  async function loadAdminVehicleTypeImages() {
+    const box = $("vehicleTypeAssets");
+    if (!box) return;
+    try {
+      const data = await api("/api/vehicle-type-images");
+      const current = new Map((data.items || []).map(item => [item.vehicle_type, item.media_id]));
+      box.innerHTML = Object.entries(vehicleTypeLabels).map(([type,label]) => {
+        const mediaId = current.get(type);
+        return '<article class="vehicle-asset-card"><div class="vehicle-asset-preview">' +
+          (mediaId ? '<img data-vehicle-type-preview="' + escapeHtml(mediaId) + '" alt="' + escapeHtml(label) + '">' : '<span>No image set</span>') +
+          '</div><div class="vehicle-asset-meta"><strong>' + escapeHtml(label) + '</strong><label class="vehicle-asset-upload">CHANGE IMAGE<input type="file" accept="image/jpeg,image/png,image/webp" data-update-vehicle-type="' + type + '"></label></div></article>';
+      }).join("");
+      await Promise.all([...box.querySelectorAll("[data-vehicle-type-preview]")].map(async image => {
+        try { image.src = await getVehicleTypeImageUrl(image.dataset.vehicleTypePreview); }
+        catch (_) { image.closest(".vehicle-asset-preview").innerHTML = "<span>Image unavailable</span>"; }
+      }));
+    } catch (error) {
+      box.innerHTML = '<div class="empty-state">' + escapeHtml(error.message || "Could not load vehicle images") + '</div>';
+    }
+  }
   async function loadVehiclePhotoImage(img) {
     const mediaId = img && img.dataset.vehicleMedia;
     if (!mediaId) return;
@@ -96,9 +158,21 @@
     });
   }
 
+  function canOpenView(view) {
+    if (view === "admin") return !!state.user && state.user.role === "admin";
+    if (view === "driver") return !!state.user && (!!state.driver || ["driver","driver_pending"].includes(state.user.role));
+    return ["ride","activity","profile"].includes(view);
+  }
+  function getSavedView() {
+    try {
+      const saved = localStorage.getItem("wing_fast_last_view") || "ride";
+      return canOpenView(saved) ? saved : "ride";
+    } catch (_) { return "ride"; }
+  }
   function setView(view) {
     const allowedViews = ["ride","activity","profile","driver","admin"];
-    if (!allowedViews.includes(view)) view = "ride";
+    if (!allowedViews.includes(view) || !canOpenView(view)) view = "ride";
+    try { localStorage.setItem("wing_fast_last_view", view); } catch (_) {}
     document.querySelectorAll(".bottom-nav .tab").forEach((button) => {
       const active = button.dataset.view === view;
       button.classList.toggle("active", active);
@@ -157,7 +231,17 @@
     } catch (error) { console.warn("Could not refresh driver route:",error); }
   }
   function startLiveMap(){initMap();if(!state.map)return;setTimeout(()=>state.map.invalidateSize(),150);refreshDrivers();if(state.liveTimer)clearInterval(state.liveTimer);state.liveTimer=setInterval(refreshDrivers,5000);}
-  function chooseVehicle(type){$("vehicleType").value=type;document.querySelectorAll("[data-vehicle-choice]").forEach(btn=>{const active=btn.dataset.vehicleChoice===type;btn.classList.toggle("active",active);btn.setAttribute("aria-pressed",String(active));});}
+  function chooseVehicle(type){
+    const allowed = ["suv","car","tuk_tuk","motorbike","van"];
+    if (!allowed.includes(type)) return;
+    $("vehicleType").value=type;
+    try { localStorage.setItem("wing_fast_vehicle_type", type); } catch (_) {}
+    document.querySelectorAll("[data-vehicle-choice]").forEach(btn=>{
+      const active=btn.dataset.vehicleChoice===type;
+      btn.classList.toggle("active",active);
+      btn.setAttribute("aria-pressed",String(active));
+    });
+  }
   async function openLocationPicker(mode){state.pickerMode=mode;state.mapMode=mode;$("locationModalTitle").textContent=mode==="pickup"?"Choose pickup point":"Choose destination";$("locationModalHint").textContent=mode==="pickup"?"The center pin marks your real pickup location. Move the map to adjust.":"Move the map until the center pin marks your destination."; const modal=$("locationPicker");if(locationCloseTimer){clearTimeout(locationCloseTimer);locationCloseTimer=null;}modal.classList.remove("hidden","is-closing");initMap();if(!state.map)return;startLiveMap();const existing=mode==="pickup"?state.pickup:state.destination;if(existing){state.map.setView([existing.lat,existing.lon],16);}else if(mode==="pickup"){await requestCurrentLocation(false);}else if(state.pickup){state.map.setView([state.pickup.lat,state.pickup.lon],14);}setTimeout(()=>{state.map.invalidateSize();const c=state.map.getCenter();state.mapCandidate={lat:c.lat,lon:c.lng};$("selectedCoordinates").textContent=c.lat.toFixed(5)+", "+c.lng.toFixed(5);updateDistance();},180);}
   function closeLocationPicker(){ const modal=$("locationPicker"); if(!modal||modal.classList.contains("hidden")||modal.classList.contains("is-closing"))return; modal.classList.add("is-closing"); if(locationCloseTimer)clearTimeout(locationCloseTimer); locationCloseTimer=setTimeout(()=>{modal.classList.add("hidden");modal.classList.remove("is-closing");locationCloseTimer=null;},230); }
   function confirmLocationPicker(){const p=state.mapCandidate;if(!p)return;if(state.pickerMode==="pickup")setPickup(p,"GPS / Map: "+p.lat.toFixed(5)+", "+p.lon.toFixed(5));else setDestination(p,"Map: "+p.lat.toFixed(5)+", "+p.lon.toFixed(5));closeLocationPicker();updateDistance();}
@@ -225,7 +309,10 @@
       if (state.user.role === "admin") $("profileAdminAction").classList.remove("hidden");
       $("loading").classList.add("hidden"); $("errorPanel").classList.add("hidden"); $("appContent").classList.remove("hidden");
       checkLocationPermission();
+      try { const savedVehicle = localStorage.getItem("wing_fast_vehicle_type"); if (savedVehicle) chooseVehicle(savedVehicle); } catch (_) {}
       loadPromotion();
+      loadVehicleTypeImages();
+      setView(getSavedView());
     } catch (e) { showError(e); }
   }
   function locate(){openLocationPicker("pickup");}
@@ -460,6 +547,7 @@
           (d.status !== "blocked" ? '<button class="mini-btn" data-block="' + driverId + '">BLOCK DRIVER</button>' : '<span class="muted">BLOCKED</span>') + '</div></article>';
       }).join("") : '<div class="empty-state">No driver applications yet.</div>';
       await Promise.all([...$("adminDrivers").querySelectorAll("[data-vehicle-media]")].map(loadVehiclePhotoImage));
+      await loadAdminVehicleTypeImages();
       $("adminBookings").innerHTML = bookings.items.slice(0,25).map((b) =>
         '<article class="ride-card"><strong>' + escapeHtml(b.destination_text) + '</strong><small>' + escapeHtml(b.status) + ' · Passenger ' + escapeHtml(b.passenger_id) + '</small></article>'
       ).join("") || '<div class="empty-state">No bookings yet.</div>';
@@ -484,6 +572,25 @@
     const block = event.target.closest("[data-block]"); if (block && confirm("Block this driver and account?")) adminAction("/api/admin/drivers/" + encodeURIComponent(block.dataset.block) + "/block");
   });
   document.addEventListener("change", async (event) => {
+    const typeInput = event.target.closest("[data-update-vehicle-type]");
+    if (typeInput && typeInput.files && typeInput.files[0]) {
+      const vehicleType = typeInput.dataset.updateVehicleType;
+      typeInput.disabled = true;
+      try {
+        const media = await uploadMediaFile(typeInput.files[0], "vehicle");
+        await api("/api/admin/vehicle-type-images", {
+          method:"POST", body:JSON.stringify({ vehicle_type:vehicleType, media_id:media.id })
+        });
+        if ($("vehicleAssetsMessage")) message("vehicleAssetsMessage", vehicleTypeLabels[vehicleType] + " image saved.", "success");
+        haptic("success");
+        await loadAdminVehicleTypeImages();
+        await loadVehicleTypeImages();
+      } catch (error) {
+        if ($("vehicleAssetsMessage")) message("vehicleAssetsMessage", error.message || "Vehicle image update failed.", "error");
+        haptic("error");
+      } finally { typeInput.disabled = false; typeInput.value = ""; }
+      return;
+    }
     const input = event.target.closest("[data-update-vehicle-photo]");
     if (!input || !input.files || !input.files[0]) return;
     const driverId = input.dataset.updateVehiclePhoto;
@@ -544,6 +651,17 @@
 (() => {
   const dictionaries = {
     km: {
+      "Vehicle display images":"រូបភាពយានយន្តដែលបង្ហាញក្នុងកម្មវិធី",
+      "Change the default images displayed on the Ride screen. These are separate from each driver's personal vehicle photo.":"ប្ដូររូបភាពយានយន្តលំនាំដើមនៅទំព័រកក់ដំណើរ។ រូបទាំងនេះខុសពីរូបរថយន្តផ្ទាល់ខ្លួនរបស់អ្នកបើកបរ។",
+      "CHANGE IMAGE":"ប្ដូររូបភាព",
+      "No image set":"មិនទាន់មានរូបភាព",
+      "Image unavailable":"មិនអាចបង្ហាញរូបភាពបាន",
+      "SUV image saved.":"បានរក្សាទុករូប SUV។",
+      "Sedan image saved.":"បានរក្សាទុករូប Sedan។",
+      "Tuk-Tuk image saved.":"បានរក្សាទុករូប Tuk-Tuk។",
+      "Motorcycle image saved.":"បានរក្សាទុករូបម៉ូតូ។",
+      "Van image saved.":"បានរក្សាទុករូប Van។",
+
       "Vehicle photo":"រូបថតយានយន្ត",
       "Upload a clear vehicle photo for admin review":"សូមបញ្ចូលរូបថតយានយន្តឲ្យច្បាស់ ដើម្បីឲ្យអ្នកគ្រប់គ្រងពិនិត្យ",
       "Vehicle photo not available":"មិនមានរូបថតយានយន្ត",
@@ -679,6 +797,17 @@
       "Block this driver and account?":"តើអ្នកចង់បិទអ្នកបើកបរ និងគណនីនេះមែនទេ?"
     },
     zh: {
+      "Vehicle display images":"车辆展示图片",
+      "Change the default images displayed on the Ride screen. These are separate from each driver's personal vehicle photo.":"更改叫车页面上显示的默认车辆图片。这些图片与司机个人车辆照片分开管理。",
+      "CHANGE IMAGE":"更换图片",
+      "No image set":"尚未设置图片",
+      "Image unavailable":"图片无法显示",
+      "SUV image saved.":"SUV 图片已保存。",
+      "Sedan image saved.":"轿车图片已保存。",
+      "Tuk-Tuk image saved.":"嘟嘟车图片已保存。",
+      "Motorcycle image saved.":"摩托车图片已保存。",
+      "Van image saved.":"面包车图片已保存。",
+
       "Vehicle photo":"车辆照片",
       "Upload a clear vehicle photo for admin review":"请上传清晰的车辆照片以供管理员审核",
       "Vehicle photo not available":"暂无车辆照片",
