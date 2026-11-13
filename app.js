@@ -105,6 +105,19 @@
       }
     });
     await Promise.all(jobs);
+    const coverflowBox=$("vehicleOptions");
+    if(coverflowBox&&!coverflowBox.dataset.coverflowReady){
+      coverflowBox.dataset.coverflowReady="true";
+      let frame=0;
+      coverflowBox.addEventListener("scroll",()=>{
+        if(frame)return;
+        frame=requestAnimationFrame(()=>{
+          frame=0;
+          updateVehicleCoverflow();
+        });
+      },{passive:true});
+    }
+    updateVehicleCoverflow();
   }
 
   function renderDriverVehicleOptions(items){
@@ -296,11 +309,32 @@
     } catch (error) { console.warn("Could not refresh driver route:",error); }
   }
   function startLiveMap(){initMap();if(!state.map)return;setTimeout(()=>state.map.invalidateSize(),150);refreshDrivers();if(state.liveTimer)clearInterval(state.liveTimer);state.liveTimer=setInterval(refreshDrivers,5000);}
-  function chooseVehicle(type){
-    const current=$("vehicleType").value||"all";
+  function updateVehicleCoverflow(){
+    const box=$("vehicleOptions");
+    if(!box)return;
+    const cards=[...box.querySelectorAll("[data-vehicle-choice]")];
+    if(!cards.length)return;
+    const center=box.getBoundingClientRect().left+box.clientWidth/2;
+    let nearest=null,nearestDistance=Infinity;
+    cards.forEach(card=>{
+      const rect=card.getBoundingClientRect();
+      const cardCenter=rect.left+rect.width/2;
+      const distance=cardCenter-center;
+      const offset=distance/Math.max(rect.width,1);
+      card.style.setProperty("--coverflow-offset",String(Math.max(-1.5,Math.min(1.5,offset))));
+      card.classList.toggle("is-centered",Math.abs(offset)<.5);
+      if(Math.abs(distance)<nearestDistance){nearest=card;nearestDistance=Math.abs(distance);}
+    });
+    if(nearest)chooseVehicle(nearest.dataset.vehicleChoice,{toggle:false,center:false});
+  }
+
+  function chooseVehicle(type,options={}){
+    const select=$("vehicleType");
+    if(!select)return;
+    const current=select.value||"all";
     if(type!=="all"&&!vehicleCatalog.some(item=>item.vehicle_type===type))return;
-    const next=(type!=="all"&&current===type)?"all":type;
-    $("vehicleType").value=next;
+    const next=(options.toggle!==false&&type!=="all"&&current===type)?"all":type;
+    select.value=next;
     try{if(next==="all")localStorage.removeItem("wing_fast_vehicle_type");else localStorage.setItem("wing_fast_vehicle_type",next);}catch(_){}
     document.querySelectorAll("[data-vehicle-choice]").forEach(button=>{
       const active=button.dataset.vehicleChoice===next&&next!=="all";
@@ -308,6 +342,14 @@
       button.setAttribute("aria-pressed",String(active));
     });
     renderFareSummary();
+    if(options.center!==false&&next!=="all"){
+      const box=$("vehicleOptions");
+      const card=box?.querySelector('[data-vehicle-choice="'+CSS.escape(next)+'"]');
+      if(box&&card){
+        const left=card.offsetLeft-(box.clientWidth-card.offsetWidth)/2;
+        box.scrollTo({left,behavior:"smooth"});
+      }
+    }
   }
 
   function formatFare(value){return "US$"+Number(value||0).toFixed(2);}
