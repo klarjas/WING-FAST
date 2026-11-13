@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#F5F7FA">
   <title>WING FAST</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/static/style.css?v=20261113-vehicle-assets-2">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/static/style.css?v=20261113-catalog-3">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -31,35 +31,9 @@
         <section id="rideView" class="view">
           <div id="promotionBanner" class="promotion-banner" aria-label="Promotion"><div class="promotion-placeholder"><span>WING FAST</span><small>Promotion</small></div><img id="promotionImage" alt="Promotion"></div>
           <div class="panel vehicle-picker">
-            <div class="section-heading"><div><span class="eyebrow">CHOOSE YOUR RIDE</span><h2>Choose your vehicle</h2></div><span class="step">01 / 03</span></div>
-            <div class="vehicle-options" role="group" aria-label="Choose vehicle type">
-              <button type="button" class="vehicle-option" data-vehicle-choice="suv" aria-pressed="false">
-                <svg viewBox="0 0 64 40" aria-hidden="true"><path d="M9 25 14 15Q16 11 22 11h20q5 0 8 5l5 9v6H9z" fill="currentColor" opacity=".22" stroke="currentColor" stroke-width="2"/><path d="m19 15 4-1h17l5 7H16z" fill="currentColor" opacity=".4"/><circle cx="19" cy="31" r="5" fill="#08080A" stroke="currentColor" stroke-width="2"/><circle cx="46" cy="31" r="5" fill="#08080A" stroke="currentColor" stroke-width="2"/></svg>
-                <img class="vehicle-option-image hidden" data-vehicle-image="suv" alt="SUV">
-                <span>SUV</span>
-              </button>
-              <button type="button" class="vehicle-option" data-vehicle-choice="car" aria-pressed="false">
-                <svg viewBox="0 0 64 40" aria-hidden="true"><path d="m8 25 5-8q2-4 8-4h23q5 0 8 5l4 7v6H8z" fill="currentColor" opacity=".22" stroke="currentColor" stroke-width="2"/><path d="m19 16 4-1h17l5 7H15z" fill="currentColor" opacity=".4"/><circle cx="19" cy="31" r="5" fill="#08080A" stroke="currentColor" stroke-width="2"/><circle cx="46" cy="31" r="5" fill="#08080A" stroke="currentColor" stroke-width="2"/></svg>
-                <img class="vehicle-option-image hidden" data-vehicle-image="car" alt="Sedan">
-                <span>Sedan</span>
-              </button>
-              <button type="button" class="vehicle-option" data-vehicle-choice="tuk_tuk" aria-pressed="false">
-                <svg viewBox="0 0 64 40" aria-hidden="true"><path d="M12 26 16 16h25l8 10v6H12z" fill="currentColor" opacity=".25" stroke="currentColor" stroke-width="2"/><path d="M20 16V9h17v7" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="19" cy="32" r="4" fill="#08080A" stroke="currentColor" stroke-width="2"/><circle cx="44" cy="32" r="4" fill="#08080A" stroke="currentColor" stroke-width="2"/></svg>
-                <img class="vehicle-option-image hidden" data-vehicle-image="tuk_tuk" alt="Tuk-Tuk">
-                <span>Tuk-Tuk</span>
-              </button>
-              <button type="button" class="vehicle-option" data-vehicle-choice="motorbike" aria-pressed="false">
-                <svg viewBox="0 0 64 40" aria-hidden="true"><circle cx="16" cy="29" r="7" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="48" cy="29" r="7" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="m16 29 10-12 9 12H16l8-9h13l11 9-8-16h-7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/></svg>
-                <img class="vehicle-option-image hidden" data-vehicle-image="motorbike" alt="Motorcycle">
-                <span>Motorcycle</span>
-              </button>
-              <button type="button" class="vehicle-option" data-vehicle-choice="van" aria-pressed="false">
-                <svg viewBox="0 0 64 40" aria-hidden="true"><path d="M8 12h34q5 0 7 5l7 10v5H8z" fill="currentColor" opacity=".22" stroke="currentColor" stroke-width="2"/><path d="M43 14v10h10l-5-8q-1-2-5-2" fill="currentColor" opacity=".4"/><circle cx="19" cy="32" r="5" fill="#08080A" stroke="currentColor" stroke-width="2"/><circle cx="47" cy="32" r="5" fill="#08080A" stroke="currentColor" stroke-width="2"/></svg>
-                <img class="vehicle-option-image hidden" data-vehicle-image="van" alt="Van">
-                <span>Van</span>
-              </button>
-            </div>
-            <select id="vehicleType" class="visually-hidden" aria-hidden="true" tabindex="-1"><option value="">Choose vehicle</option><option value="suv">SUV</option><option value="car">Sedan</option><option value="tuk_tuk">Tuk-Tuk</option><option value="motorbike">Motorcycle</option><option value="van">Van</option></select>
+            <div class="section-heading"><div><span class="eyebrow">CHOOSE YOUR RIDE</span><h2>Choose your vehicle</h2><p class="vehicle-selection-hint">Tap once to select · Tap again to show all vehicles</p></div><span class="step">01 / 03</span></div>
+            <div class="vehicle-options" id="vehicleOptions" role="group" aria-label="Choose vehicle type"><div class="empty-state">Loading vehicles…</div></div>
+            <select id="vehicleType" class="visually-hidden" aria-hidden="true" tabindex="-1"><option value="all">All vehicles</option></select>
           </div>
           <div id="locationPicker" class="location-modal hidden" role="dialog" aria-modal="true" aria-labelledby="locationModalTitle">
             <div class="location-modal-card">
@@ -95,7 +69,7 @@
           <div id="driverApplyPanel" class="panel form-panel">
             <h3>Driver registration</h3><p class="muted">Submit your vehicle details. Admin approval is required before receiving trips.</p>
             <label>Phone number</label><input id="driverPhone" placeholder="+855 …">
-            <label>Vehicle type</label><select id="driverVehicle"><option value="tuk_tuk">Tuk Tuk</option><option value="car">Sedan</option><option value="suv">SUV</option><option value="motorbike">Motorcycle</option><option value="van">Van</option></select>
+            <label>Vehicle type</label><select id="driverVehicle"><option value="">Loading vehicles…</option></select>
             <label>Vehicle model</label><input id="driverModel" placeholder="e.g. Toyota Prius">
             <label>License plate</label><input id="driverPlate" placeholder="e.g. ភ្នំពេញ 2AB-1234">
             <label for="driverVehiclePhoto">Vehicle photo</label>
@@ -112,10 +86,22 @@
 
         <section id="adminView" class="view hidden">
           <div class="section-heading"><div><span class="eyebrow">CONTROL CENTER</span><h2>Admin panel</h2></div><button class="text-action" id="loadAdmin">Refresh</button></div>
-          <section class="panel vehicle-assets-admin">
-            <div class="section-heading"><div><span class="eyebrow">RIDE VEHICLES</span><h3>Vehicle display images</h3></div><span class="step">5 TYPES</span></div>
-            <p class="muted">Change the default images displayed on the Ride screen. These are separate from each driver's personal vehicle photo.</p>
-            <div id="vehicleTypeAssets" class="vehicle-assets-grid"><div class="empty-state">Loading vehicle images…</div></div>
+          <section class="panel vehicle-catalog-admin">
+            <div class="section-heading"><div><span class="eyebrow">RIDE VEHICLES</span><h3>Vehicle catalogue</h3></div><span class="step">ADMIN</span></div>
+            <p class="muted">Add vehicle types, change display names, and set the price charged per kilometre.</p>
+            <div id="vehicleCatalogList" class="vehicle-catalog-list"><div class="empty-state">Loading vehicles…</div></div>
+            <div class="vehicle-catalog-add">
+              <div class="vehicle-catalog-add-title">ADD NEW VEHICLE</div>
+              <label for="newVehicleName">Vehicle name</label>
+              <input id="newVehicleName" maxlength="60" placeholder="e.g. Premium SUV">
+              <label for="newVehiclePrice">Price per kilometre (USD)</label>
+              <input id="newVehiclePrice" type="number" min="0" max="10000" step="0.01" inputmode="decimal" placeholder="e.g. 0.50">
+              <label for="newVehicleImage">Vehicle image</label>
+              <input id="newVehicleImage" type="file" accept="image/jpeg,image/png,image/webp">
+              <div class="vehicle-image-size-note"><strong>Image guide</strong><span>Square 1:1 · Recommended 512 × 512 px · JPG, PNG or WebP · Maximum 10 MB · Transparent or clean background</span></div>
+              <div id="newVehicleImagePreview" class="vehicle-image-square"><span>1:1 PREVIEW</span><img class="hidden" alt="New vehicle preview"></div>
+              <button type="button" class="btn primary full" id="addVehicleBtn">ADD VEHICLE</button>
+            </div>
             <p id="vehicleAssetsMessage" class="message" aria-live="polite"></p>
           </section>
           <section class="panel promotion-admin">
@@ -152,6 +138,6 @@
   </div>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script>if(window.lucide) window.lucide.createIcons();</script>
-  <script src="/static/app.js?v=20261113-vehicle-assets-2"></script>
+  <script src="/static/app.js?v=20261113-catalog-3"></script>
 </body>
 </html>
