@@ -48,7 +48,7 @@
       else feedback.impactOccurred(style === "soft" ? "soft" : style === "medium" ? "medium" : "light");
     } catch (_) {}
   }
-  const state = { user:null,driver:null,pickup:null,destination:null,map:null,driverMarkers:new Map(),driverMarkerAnimations:new Map(),pickupMarker:null,destinationMarker:null,routeLine:null,selectedRouteLine:null,mapMode:"pickup",pickerMode:"pickup",mapCandidate:null,distanceMode:"road",distanceKm:null,liveTimer:null,watchId:null,locationTimer:null,locationPermission:"unknown",locationAsked:false,locationActive:false,locationSending:false,pendingLocation:null,wakeLock:null };
+  const state = { user:null,driver:null,pickup:null,destination:null,map:null,driverMarkers:new Map(),driverMarkerAnimations:new Map(),pickupMarker:null,destinationMarker:null,routeLine:null,selectedRouteLine:null,mapMode:"pickup",pickerMode:"pickup",mapCandidate:null,distanceMode:"road",distanceKm:null,liveTimer:null,watchId:null,locationTimer:null,locationPermission:"unknown",locationAsked:false,locationActive:false,locationSending:false,locationPolling:false,pendingLocation:null,wakeLock:null };
   const authHeaders = () => ({ "Content-Type": "application/json", "Authorization": "tma " + (tg ? tg.initData : "") });
   const vehiclePhotoObjectUrls = new Map();
   async function uploadMediaFile(file, category) {
@@ -585,6 +585,10 @@
     try {
       if (enabled && state.locationActive && document.visibilityState === "visible" && !state.wakeLock) {
         const lock = await navigator.wakeLock.request("screen");
+        if (!state.locationActive || document.visibilityState !== "visible") {
+          await lock.release();
+          return;
+        }
         state.wakeLock = lock;
         lock.addEventListener("release", () => {
           if (state.wakeLock === lock) state.wakeLock = null;
@@ -626,12 +630,15 @@
     return pushDriverCoords(position);
   }
   async function pollAndSendDriverLocation() {
-    if (!state.locationActive) return;
+    if (!state.locationActive || state.locationPolling) return;
+    state.locationPolling = true;
     try {
       const location = await getTelegramLocation();
       if (location) await pushDriverCoords(location);
     } catch (error) {
       console.warn("Telegram live location refresh failed; browser GPS remains active:", error);
+    } finally {
+      state.locationPolling = false;
     }
   }
   function stopLocation() {
