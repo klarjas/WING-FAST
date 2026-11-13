@@ -698,8 +698,8 @@ def get_vehicle_catalog(authorization: Optional[str] = Header(default=None)):
     auth_user(authorization)
     with db() as conn:
         rows = conn.execute("""
-            SELECT vehicle_type, display_name, price_per_km, media_id::TEXT AS media_id,
-                   is_active, sort_order
+            SELECT vehicle_type, display_name, base_fare, price_per_km, minimum_fare,
+                   media_id::TEXT AS media_id, is_active, sort_order
             FROM public.vehicle_catalog
             WHERE is_active=TRUE
             ORDER BY sort_order, display_name
