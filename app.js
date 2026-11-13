@@ -117,7 +117,7 @@
         });
       },{passive:true});
     }
-    updateVehicleCoverflow();
+    updateVehicleCoverflow(false);
   }
 
   function renderDriverVehicleOptions(items){
@@ -309,7 +309,7 @@
     } catch (error) { console.warn("Could not refresh driver route:",error); }
   }
   function startLiveMap(){initMap();if(!state.map)return;setTimeout(()=>state.map.invalidateSize(),150);refreshDrivers();if(state.liveTimer)clearInterval(state.liveTimer);state.liveTimer=setInterval(refreshDrivers,5000);}
-  function updateVehicleCoverflow(){
+  function updateVehicleCoverflow(syncSelection=true){
     const box=$("vehicleOptions");
     if(!box)return;
     const cards=[...box.querySelectorAll("[data-vehicle-choice]")];
@@ -325,7 +325,7 @@
       card.classList.toggle("is-centered",Math.abs(offset)<.5);
       if(Math.abs(distance)<nearestDistance){nearest=card;nearestDistance=Math.abs(distance);}
     });
-    if(nearest)chooseVehicle(nearest.dataset.vehicleChoice,{toggle:false,center:false});
+    if(syncSelection&&nearest)chooseVehicle(nearest.dataset.vehicleChoice,{toggle:false,center:false});
   }
 
   function chooseVehicle(type,options={}){
