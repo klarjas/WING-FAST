@@ -57,3 +57,8 @@ Before deploying the vehicle-photo update, run migrations/20261113_vehicle_photo
 ## Vehicle category display images and last page
 
 Run migrations/20261113_vehicle_type_images.sql once in the Supabase SQL Editor. The Admin panel then lets administrators upload or replace the default SUV, Sedan, Tuk-Tuk, Motorcycle and Van images shown on the Ride screen. The last visited app page and chosen vehicle type are saved locally on the user's device.
+
+
+## Dynamic vehicle catalogue
+
+Run migrations/20261113_vehicle_catalog.sql once in Supabase SQL Editor. The Admin panel supports adding vehicle names, setting a USD per-kilometre rate and uploading a square vehicle image. Recommended image canvas is 512 × 512 px (1:1), JPG/PNG/WebP, up to 10 MB. Existing SUV, Sedan, Tuk-Tuk, Motorcycle and Van image/pricing settings are imported into the catalogue when the migration runs.
