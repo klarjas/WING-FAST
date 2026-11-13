@@ -29,6 +29,27 @@
         </nav>
 
         <section id="rideView" class="view">
+          <div class="panel form-panel">
+            <div class="section-heading"><div><span class="eyebrow">BOOK A RIDE</span><h2>Where to?</h2></div><span class="step">01 / 02</span></div>
+            <label>Pickup location</label>
+            <div class="location-row location-select-row"><span class="field-icon pickup"></span><input id="pickupText" placeholder="Tap to choose pickup location" readonly><button type="button" id="locateBtn" class="small-action">CHOOSE</button></div>
+            <label>Destination</label>
+            <div class="location-row location-select-row"><span class="field-icon destination"></span><input id="destination" placeholder="Tap to choose destination" readonly><button type="button" id="chooseDestinationBtn" class="small-action">CHOOSE</button></div>
+            <div id="fareSummary" class="fare-summary hidden" aria-live="polite">
+              <div class="fare-summary-heading"><strong>FARE ESTIMATE</strong><span id="fareVehicleName"></span></div>
+              <div class="fare-summary-rows">
+                <div><span>Distance</span><b id="fareDistance">—</b></div>
+                <div><span>Base fare</span><b id="fareBase">—</b></div>
+                <div><span>Price per km</span><b id="farePerKm">—</b></div>
+                <div><span>Minimum fare</span><b id="fareMinimum">—</b></div>
+              </div>
+              <div class="fare-total-row"><span>Estimated total</span><strong id="fareTotal">—</strong></div>
+              <p class="fare-disclaimer">Final fare may be confirmed by WING FAST at booking time.</p>
+            </div>
+            <div class="two-col"><div><label>Payment</label><select id="payment"><option value="cash">Cash</option><option value="digital">Digital</option></select></div></div>
+            <button id="bookBtn" class="btn primary full">FIND A DRIVER <span>→</span></button>
+            <p id="bookingMessage" class="message" aria-live="polite"></p>
+          </div>
           <div id="promotionBanner" class="promotion-banner" aria-label="Promotion"><div class="promotion-placeholder"><span>WING FAST</span><small>Promotion</small></div><img id="promotionImage" alt="Promotion"></div>
           <div class="panel vehicle-picker">
             <div class="section-heading"><div><span class="eyebrow">CHOOSE YOUR RIDE</span><h2>Choose your vehicle</h2><p class="vehicle-selection-hint">Tap once to select · Tap again to show all vehicles</p></div><span class="step">01 / 03</span></div>
@@ -47,16 +68,7 @@
               <div class="map-live-info"><span class="map-dot"></span><b id="mapStatus">Finding nearby drivers…</b><span id="driverCount">Live driver locations update while they are online</span></div>
             </div>
           </div>
-          <div class="panel form-panel">
-            <div class="section-heading"><div><span class="eyebrow">BOOK A RIDE</span><h2>Where to?</h2></div><span class="step">01 / 02</span></div>
-            <label>Pickup location</label>
-            <div class="location-row location-select-row"><span class="field-icon pickup"></span><input id="pickupText" placeholder="Tap to choose pickup location" readonly><button type="button" id="locateBtn" class="small-action">CHOOSE</button></div>
-            <label>Destination</label>
-            <div class="location-row location-select-row"><span class="field-icon destination"></span><input id="destination" placeholder="Tap to choose destination" readonly><button type="button" id="chooseDestinationBtn" class="small-action">CHOOSE</button></div>
-            <div class="two-col"><div><label>Payment</label><select id="payment"><option value="cash">Cash</option><option value="digital">Digital</option></select></div></div>
-            <button id="bookBtn" class="btn primary full">FIND A DRIVER <span>→</span></button>
-            <p id="bookingMessage" class="message" aria-live="polite"></p>
-          </div>
+          
         </section>
 
         <section id="activityView" class="view hidden">
