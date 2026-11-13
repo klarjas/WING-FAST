@@ -1266,3 +1266,17 @@ footer{color:#98A2AF!important;border-color:#E7EBF0!important}
 /* Keep the floating navigation fixed to the Telegram viewport. The old horizontal overflow rule on .app-shell could trap fixed descendants while scrolling. */
 .app-shell{overflow:visible!important;overflow-x:visible!important;overflow-y:visible!important}
 .bottom-nav{position:fixed!important;top:auto!important;bottom:calc(12px + env(safe-area-inset-bottom,0px))!important;left:50%!important;right:auto!important;transform:translate3d(-50%,0,0)!important;z-index:9999!important}
+
+
+/* Passenger fare estimate — scoped to the selected vehicle only */
+.fare-summary{margin-top:16px;padding:15px;border:1px solid #E7D79E;border-radius:15px;background:linear-gradient(145deg,#FFFCF2,#FFFFFF);color:#202631}
+.fare-summary-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:10px;border-bottom:1px solid #EEE6D0}
+.fare-summary-heading strong{font-size:10px;letter-spacing:1.2px;color:#9A6B00}
+.fare-summary-heading span{font-size:12px;font-weight:800;color:#303846}
+.fare-summary-rows{display:grid;gap:8px;padding:12px 0}
+.fare-summary-rows>div,.fare-total-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.fare-summary-rows span,.fare-total-row span{font-size:11px;color:#697383}
+.fare-summary-rows b{font-size:11px;color:#303846;font-variant-numeric:tabular-nums}
+.fare-total-row{border-top:1px solid #EEE6D0;padding-top:11px}
+.fare-total-row strong{font-size:20px;color:#946600;font-variant-numeric:tabular-nums}
+.fare-disclaimer{font-size:9px;color:#89919D;margin:9px 0 0}
