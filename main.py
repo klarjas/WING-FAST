@@ -260,6 +260,11 @@ class DriverApplication(BaseModel):
     vehicle_type: str = Field(pattern="^(car|suv|tuk_tuk|motorbike|van)$")
     vehicle_model: str = Field(min_length=2, max_length=100)
     plate_number: str = Field(min_length=2, max_length=30)
+    vehicle_photo_media_id: str = Field(min_length=36, max_length=36)
+
+
+class VehiclePhotoUpdate(BaseModel):
+    media_id: str = Field(min_length=36, max_length=36)
 
     @field_validator("phone", "vehicle_model", "plate_number")
     @classmethod
@@ -313,19 +318,25 @@ def health():
 
 @app.get("/api/me")
 def me(authorization: Optional[str] = Header(default=None)):
-    user = auth_user(authorization)
+    # Telegram photo_url is provided by the signed WebApp initData user object.
+    tg = current_user(authorization)
     with db() as conn:
+        user = ensure_user(conn, tg)
         driver = get_driver(conn, user["id"])
         vehicle = None
         if driver:
             vehicle = conn.execute("""
-                SELECT vehicle_type, model AS vehicle_model, plate_number
+                SELECT vehicle_type, model AS vehicle_model, plate_number,
+                       photo_media_id::TEXT AS vehicle_photo_media_id
                 FROM public.vehicles WHERE driver_id=%s
                 ORDER BY created_at DESC LIMIT 1
             """, (driver["id"],)).fetchone()
     ui_user = dict(user)
     ui_user["telegram_id"] = str(user["telegram_user_id"])
     ui_user["first_name"] = user["full_name"]
+    photo_url = tg.get("photo_url")
+    if isinstance(photo_url, str) and photo_url.startswith("https://"):
+        ui_user["photo_url"] = photo_url
     ui_user["blocked"] = False
     ui_driver = None
     if driver:
@@ -341,6 +352,12 @@ def driver_apply(payload: DriverApplication, authorization: Optional[str] = Head
     plate = clean(payload.plate_number, 30, "License plate")
     normalized = re.sub(r"[^A-Z0-9]", "", plate.upper())
     with db() as conn:
+        photo = conn.execute("""
+            SELECT id FROM public.media_files
+            WHERE id=%s AND category='vehicle' AND uploaded_by=%s
+        """, (payload.vehicle_photo_media_id, user["id"])).fetchone()
+        if not photo:
+            raise HTTPException(403, "Upload your vehicle photo before submitting the application")
         existing = conn.execute("""
             SELECT id FROM public.vehicles
             WHERE normalized_plate=%s AND status IN ('pending','approved','blocked')
@@ -364,9 +381,9 @@ def driver_apply(payload: DriverApplication, authorization: Optional[str] = Head
             """, (driver["id"],))
         conn.execute("""
             INSERT INTO public.vehicles
-                (driver_id, vehicle_type, model, plate_number, normalized_plate, status)
-            VALUES (%s,%s,%s,%s,%s,'pending')
-        """, (driver["id"], payload.vehicle_type, payload.vehicle_model, plate, normalized))
+                (driver_id, vehicle_type, model, plate_number, normalized_plate, photo_media_id, status)
+            VALUES (%s,%s,%s,%s,%s,%s,'pending')
+        """, (driver["id"], payload.vehicle_type, payload.vehicle_model, plate, normalized, payload.vehicle_photo_media_id))
     return {"ok": True, "status": "pending", "message": "Application submitted for admin review"}
 
 
@@ -621,7 +638,8 @@ def admin_drivers(authorization: Optional[str] = Header(default=None)):
         rows = conn.execute("""
             SELECT d.id AS driver_id, u.telegram_user_id::TEXT AS telegram_id,
                    u.full_name AS first_name, u.username, u.phone,
-                   d.status, v.plate_number, v.model AS vehicle_model
+                   d.status, v.plate_number, v.model AS vehicle_model,
+                   v.photo_media_id::TEXT AS vehicle_photo_media_id
             FROM public.drivers d JOIN public.users u ON u.id=d.user_id
             LEFT JOIN LATERAL (
                 SELECT plate_number, model FROM public.vehicles
@@ -630,6 +648,29 @@ def admin_drivers(authorization: Optional[str] = Header(default=None)):
             ORDER BY d.created_at DESC LIMIT 200
         """).fetchall()
     return {"items": [dict(r) for r in rows]}
+
+
+@app.post("/api/admin/drivers/{driver_id}/vehicle-photo")
+def admin_update_vehicle_photo(driver_id: str, payload: VehiclePhotoUpdate,
+                               authorization: Optional[str] = Header(default=None)):
+    user = auth_user(authorization)
+    require_admin(user)
+    with db() as conn:
+        media = conn.execute("""
+            SELECT id FROM public.media_files WHERE id=%s AND category='vehicle'
+        """, (payload.media_id,)).fetchone()
+        if not media:
+            raise HTTPException(404, "Vehicle photo not found")
+        vehicle = conn.execute("""
+            UPDATE public.vehicles SET photo_media_id=%s, updated_at=NOW()
+            WHERE id=(
+                SELECT id FROM public.vehicles
+                WHERE driver_id=%s ORDER BY created_at DESC LIMIT 1
+            ) RETURNING id
+        """, (payload.media_id, driver_id)).fetchone()
+        if not vehicle:
+            raise HTTPException(404, "Vehicle not found for this driver")
+    return {"ok": True, "vehicle_photo_media_id": payload.media_id}
 
 
 @app.post("/api/admin/drivers/{driver_id}/approve")
