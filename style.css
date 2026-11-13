@@ -1259,41 +1259,5 @@ footer{color:#98A2AF!important;border-color:#E7EBF0!important}
 @media(prefers-reduced-motion:reduce){.vehicle-option{transition:none!important}.vehicle-option:active{transform:none!important}}
 
 
-/* WING FAST — iOS image visibility, complete startup and native-feel motion */
-.vehicle-option-art img{
-  display:block!important;width:100%!important;height:100%!important;
-  min-width:0!important;min-height:0!important;object-fit:contain!important;
-  object-position:center!important;opacity:0;transform:scale(.965);
-  transition:opacity .34s ease,transform .5s cubic-bezier(.22,1,.36,1)!important;
-}
-.vehicle-option-art img.is-loaded{opacity:1;transform:scale(1)}
-.vehicle-option-art{isolation:isolate}
-#appContent.ios-app-enter{
-  animation:iosAppReveal .48s cubic-bezier(.22,1,.36,1) both!important;
-  transform-origin:50% 0;will-change:opacity,transform;
-}
-@keyframes iosAppReveal{
-  0%{opacity:0;transform:translate3d(0,12px,0) scale(.992);filter:blur(2px)}
-  70%{opacity:1;filter:blur(0)}
-  100%{opacity:1;transform:translate3d(0,0,0) scale(1);filter:none}
-}
-.loading-screen{opacity:1;visibility:visible;transition:opacity .32s ease,visibility .32s ease!important;-webkit-font-smoothing:antialiased}
-.loading-screen.is-leaving{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
-.loading-orbit{filter:drop-shadow(0 8px 18px rgba(22,132,92,.12));animation:iosLoaderBreath 2.2s ease-in-out infinite}
-@keyframes iosLoaderBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
-.view.ios-view-enter > *{animation:iosSectionReveal .44s cubic-bezier(.22,1,.36,1) both}
-.view.ios-view-enter > *:nth-child(2){animation-delay:.045s}
-.view.ios-view-enter > *:nth-child(3){animation-delay:.09s}
-.view.ios-view-enter > *:nth-child(4){animation-delay:.135s}
-.view.ios-view-enter > *:nth-child(5){animation-delay:.18s}
-@keyframes iosSectionReveal{
-  from{opacity:0;transform:translate3d(0,10px,0) scale(.99);filter:blur(2px)}
-  to{opacity:1;transform:translate3d(0,0,0) scale(1);filter:none}
-}
-.vehicle-option{transition:transform .28s cubic-bezier(.22,1,.36,1),box-shadow .28s ease,background .24s ease!important;-webkit-tap-highlight-color:transparent}
-.vehicle-option:active{transform:scale(.975)!important}
-.vehicle-option.active{border:0!important;outline:0!important;box-shadow:0 5px 17px rgba(37,52,69,.13)!important}
-@media(prefers-reduced-motion:reduce){
-  #appContent.ios-app-enter,.view.ios-view-enter > *, .loading-orbit,.vehicle-option-art img{animation:none!important;transition:none!important;filter:none!important}
-  .vehicle-option-art img{opacity:1!important;transform:none!important}
-}
+/* Preserve the original layout; only make vehicle images visible */
+.vehicle-option-art img{display:block!important}
