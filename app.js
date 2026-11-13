@@ -38,67 +38,88 @@
     if (!response.ok || !data.media || !data.media.id) throw new Error(data.detail || "Image upload failed.");
     return data.media;
   }
-  const vehicleTypeImageUrls = new Map();
-  const vehicleTypeLabels = { suv:"SUV", car:"Sedan", tuk_tuk:"Tuk-Tuk", motorbike:"Motorcycle", van:"Van" };
-  async function getVehicleTypeImageUrl(mediaId) {
-    const id = String(mediaId);
-    if (vehicleTypeImageUrls.has(id)) return vehicleTypeImageUrls.get(id);
-    const response = await fetch("/api/media/" + encodeURIComponent(id), { headers:authHeaders() });
-    if (!response.ok) throw new Error("Vehicle image could not be loaded");
-    const url = URL.createObjectURL(await response.blob());
-    vehicleTypeImageUrls.set(id, url);
-    return url;
+  const vehicleImageObjectUrls=new Map();
+  let vehicleCatalog=[];
+  const defaultVehicleLabels={suv:"SUV",car:"Sedan",tuk_tuk:"Tuk-Tuk",motorbike:"Motorcycle",van:"Van"};
+  function moneyPerKm(value){return "US$"+Number(value||0).toFixed(2)+" / km";}
+  async function getVehicleImageUrl(mediaId){
+    const id=String(mediaId);
+    if(vehicleImageObjectUrls.has(id))return vehicleImageObjectUrls.get(id);
+    const response=await fetch("/api/media/"+encodeURIComponent(id),{headers:authHeaders()});
+    if(!response.ok)throw new Error("Vehicle image could not be loaded");
+    const url=URL.createObjectURL(await response.blob());
+    vehicleImageObjectUrls.set(id,url);return url;
   }
-  async function loadVehicleTypeImages() {
-    try {
-      const data = await api("/api/vehicle-type-images");
-      const images = new Map((data.items || []).map(item => [item.vehicle_type, item.media_id]));
-      await Promise.all(Object.keys(vehicleTypeLabels).map(async type => {
-        const button = document.querySelector('[data-vehicle-choice="' + type + '"]');
-        if (!button) return;
-        const image = button.querySelector("[data-vehicle-image]");
-        const icon = button.querySelector("svg");
-        const mediaId = images.get(type);
-        if (!image) return;
-        if (!mediaId) {
-          image.classList.add("hidden");
-          image.removeAttribute("src");
-          icon?.classList.remove("hidden");
-          return;
-        }
-        try {
-          image.src = await getVehicleTypeImageUrl(mediaId);
-          image.classList.remove("hidden");
-          icon?.classList.add("hidden");
-        } catch (error) {
-          console.warn("Vehicle category image unavailable:", type, error);
-          image.classList.add("hidden");
-          icon?.classList.remove("hidden");
-        }
-      }));
-    } catch (error) {
-      console.warn("Could not load vehicle category images:", error);
+  function renderRideVehicleOptions(items){
+    const box=$("vehicleOptions");if(!box)return;
+    const select=$("vehicleType");
+    if(select)select.innerHTML='<option value="all">All vehicles</option>'+(items||[]).map(item=>'<option value="'+escapeHtml(item.vehicle_type)+'">'+escapeHtml(item.display_name)+'</option>').join("");
+    box.innerHTML=(items||[]).map(item=>{
+      const type=escapeHtml(item.vehicle_type),name=escapeHtml(item.display_name);
+      return '<button type="button" class="vehicle-option" data-vehicle-choice="'+type+'" aria-pressed="false">'+
+        '<div class="vehicle-option-art">'+(item.media_id?'<img data-catalog-image="'+type+'" alt="'+name+'">':'<span class="vehicle-option-fallback" aria-hidden="true">🚘</span>')+'</div>'+
+        '<span class="vehicle-option-name">'+name+'</span><small class="vehicle-option-price">'+moneyPerKm(item.price_per_km)+'</small></button>';
+    }).join("")||'<div class="empty-state">No vehicles available.</div>';
+    Promise.all([...box.querySelectorAll("[data-catalog-image]")].map(async img=>{
+      const item=items.find(row=>row.vehicle_type===img.dataset.catalogImage);
+      try{img.src=await getVehicleImageUrl(item.media_id);}
+      catch(_){img.outerHTML='<span class="vehicle-option-fallback">🚘</span>';}
+    }));
+  }
+  function renderDriverVehicleOptions(items){
+    const select=$("driverVehicle");if(!select)return;
+    const previous=select.value;
+    select.innerHTML=(items||[]).map(item=>'<option value="'+escapeHtml(item.vehicle_type)+'">'+escapeHtml(item.display_name)+'</option>').join("");
+    if(items.some(item=>item.vehicle_type===previous))select.value=previous;
+    else if(items.length)select.value=items[0].vehicle_type;
+    else select.innerHTML='<option value="">No vehicles available</option>';
+  }
+  async function loadVehicleCatalog(){
+    try{
+      const data=await api("/api/vehicle-catalog");vehicleCatalog=data.items||[];
+      renderRideVehicleOptions(vehicleCatalog);renderDriverVehicleOptions(vehicleCatalog);
+      let saved="all";try{saved=localStorage.getItem("wing_fast_vehicle_type")||"all";}catch(_){}
+      chooseVehicle(vehicleCatalog.some(item=>item.vehicle_type===saved)?saved:"all");
+    }catch(error){
+      console.warn("Could not load vehicle catalogue:",error);
+      const legacy=Object.entries(defaultVehicleLabels).map(([vehicle_type,display_name])=>({vehicle_type,display_name,price_per_km:0,media_id:null}));
+      vehicleCatalog=legacy;renderRideVehicleOptions(legacy);renderDriverVehicleOptions(legacy);chooseVehicle("all");
     }
   }
-  async function loadAdminVehicleTypeImages() {
-    const box = $("vehicleTypeAssets");
-    if (!box) return;
-    try {
-      const data = await api("/api/vehicle-type-images");
-      const current = new Map((data.items || []).map(item => [item.vehicle_type, item.media_id]));
-      box.innerHTML = Object.entries(vehicleTypeLabels).map(([type,label]) => {
-        const mediaId = current.get(type);
-        return '<article class="vehicle-asset-card"><div class="vehicle-asset-preview">' +
-          (mediaId ? '<img data-vehicle-type-preview="' + escapeHtml(mediaId) + '" alt="' + escapeHtml(label) + '">' : '<span>No image set</span>') +
-          '</div><div class="vehicle-asset-meta"><strong>' + escapeHtml(label) + '</strong><label class="vehicle-asset-upload">CHANGE IMAGE<input type="file" accept="image/jpeg,image/png,image/webp" data-update-vehicle-type="' + type + '"></label></div></article>';
-      }).join("");
-      await Promise.all([...box.querySelectorAll("[data-vehicle-type-preview]")].map(async image => {
-        try { image.src = await getVehicleTypeImageUrl(image.dataset.vehicleTypePreview); }
-        catch (_) { image.closest(".vehicle-asset-preview").innerHTML = "<span>Image unavailable</span>"; }
+  async function loadAdminVehicleCatalog(){
+    const box=$("vehicleCatalogList");if(!box)return;
+    try{
+      const data=await api("/api/admin/vehicle-catalog"),items=data.items||[];
+      box.innerHTML=items.map(item=>{
+        const type=escapeHtml(item.vehicle_type),name=escapeHtml(item.display_name);
+        return '<article class="vehicle-catalog-row" data-catalog-row="'+type+'">'+
+          '<div class="vehicle-catalog-image">'+(item.media_id?'<img data-admin-catalog-image="'+type+'" alt="'+name+'">':'<span>1:1 PHOTO</span>')+'</div>'+
+          '<div class="vehicle-catalog-fields">'+
+          '<label>Vehicle name<input type="text" maxlength="60" value="'+name+'" data-catalog-name="'+type+'"></label>'+
+          '<label>Price per kilometre (USD)<input type="number" min="0" max="10000" step="0.01" value="'+Number(item.price_per_km||0).toFixed(2)+'" data-catalog-price="'+type+'"></label>'+
+          '<label class="vehicle-catalog-image-button">CHANGE IMAGE<input type="file" accept="image/jpeg,image/png,image/webp" data-catalog-image-file="'+type+'"></label>'+
+          '<small>Image: 1:1 · 512 × 512 px recommended</small>'+
+          '<button type="button" class="mini-btn good" data-save-catalog="'+type+'">SAVE VEHICLE</button></div></article>';
+      }).join("")||'<div class="empty-state">No vehicles have been added yet.</div>';
+      await Promise.all([...box.querySelectorAll("[data-admin-catalog-image]")].map(async img=>{
+        const item=items.find(row=>row.vehicle_type===img.dataset.adminCatalogImage);
+        try{img.src=await getVehicleImageUrl(item.media_id);}
+        catch(_){img.closest(".vehicle-catalog-image").innerHTML="<span>Image unavailable</span>";}
       }));
-    } catch (error) {
-      box.innerHTML = '<div class="empty-state">' + escapeHtml(error.message || "Could not load vehicle images") + '</div>';
-    }
+    }catch(error){box.innerHTML='<div class="empty-state">'+escapeHtml(error.message||"Could not load vehicle catalogue")+'</div>';}
+  }
+  function slugForVehicleName(name){
+    const base=String(name||"").normalize("NFKD").toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,26);
+    return (base||"vehicle")+"_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,5);
+  }
+  async function saveVehicleCatalogItem(vehicleType,imageMediaId=null){
+    const row=document.querySelector('[data-catalog-row="'+CSS.escape(vehicleType)+'"]');
+    const name=row?row.querySelector("[data-catalog-name]").value.trim():"";
+    const price=row?Number(row.querySelector("[data-catalog-price]").value):NaN;
+    if(name.length<2)throw new Error("Vehicle name must contain at least 2 characters.");
+    if(!Number.isFinite(price)||price<0||price>10000)throw new Error("Enter a valid price per kilometre.");
+    await api("/api/admin/vehicle-catalog",{method:"POST",body:JSON.stringify({vehicle_type:vehicleType,display_name:name,price_per_km:price,media_id:imageMediaId})});
+    await loadAdminVehicleCatalog();await loadVehicleCatalog();
   }
   async function loadVehiclePhotoImage(img) {
     const mediaId = img && img.dataset.vehicleMedia;
@@ -232,14 +253,15 @@
   }
   function startLiveMap(){initMap();if(!state.map)return;setTimeout(()=>state.map.invalidateSize(),150);refreshDrivers();if(state.liveTimer)clearInterval(state.liveTimer);state.liveTimer=setInterval(refreshDrivers,5000);}
   function chooseVehicle(type){
-    const allowed = ["suv","car","tuk_tuk","motorbike","van"];
-    if (!allowed.includes(type)) return;
-    $("vehicleType").value=type;
-    try { localStorage.setItem("wing_fast_vehicle_type", type); } catch (_) {}
-    document.querySelectorAll("[data-vehicle-choice]").forEach(btn=>{
-      const active=btn.dataset.vehicleChoice===type;
-      btn.classList.toggle("active",active);
-      btn.setAttribute("aria-pressed",String(active));
+    const current=$("vehicleType").value||"all";
+    if(type!=="all"&&!vehicleCatalog.some(item=>item.vehicle_type===type))return;
+    const next=(type!=="all"&&current===type)?"all":type;
+    $("vehicleType").value=next;
+    try{if(next==="all")localStorage.removeItem("wing_fast_vehicle_type");else localStorage.setItem("wing_fast_vehicle_type",next);}catch(_){}
+    document.querySelectorAll("[data-vehicle-choice]").forEach(button=>{
+      const active=button.dataset.vehicleChoice===next&&next!=="all";
+      button.classList.toggle("active",active);
+      button.setAttribute("aria-pressed",String(active));
     });
   }
   async function openLocationPicker(mode){state.pickerMode=mode;state.mapMode=mode;$("locationModalTitle").textContent=mode==="pickup"?"Choose pickup point":"Choose destination";$("locationModalHint").textContent=mode==="pickup"?"The center pin marks your real pickup location. Move the map to adjust.":"Move the map until the center pin marks your destination."; const modal=$("locationPicker");if(locationCloseTimer){clearTimeout(locationCloseTimer);locationCloseTimer=null;}modal.classList.remove("hidden","is-closing");initMap();if(!state.map)return;startLiveMap();const existing=mode==="pickup"?state.pickup:state.destination;if(existing){state.map.setView([existing.lat,existing.lon],16);}else if(mode==="pickup"){await requestCurrentLocation(false);}else if(state.pickup){state.map.setView([state.pickup.lat,state.pickup.lon],14);}setTimeout(()=>{state.map.invalidateSize();const c=state.map.getCenter();state.mapCandidate={lat:c.lat,lon:c.lng};$("selectedCoordinates").textContent=c.lat.toFixed(5)+", "+c.lng.toFixed(5);updateDistance();},180);}
@@ -311,7 +333,7 @@
       checkLocationPermission();
       try { const savedVehicle = localStorage.getItem("wing_fast_vehicle_type"); if (savedVehicle) chooseVehicle(savedVehicle); } catch (_) {}
       loadPromotion();
-      loadVehicleTypeImages();
+      await loadVehicleCatalog();
       setView(getSavedView());
     } catch (e) { showError(e); }
   }
@@ -547,7 +569,7 @@
           (d.status !== "blocked" ? '<button class="mini-btn" data-block="' + driverId + '">BLOCK DRIVER</button>' : '<span class="muted">BLOCKED</span>') + '</div></article>';
       }).join("") : '<div class="empty-state">No driver applications yet.</div>';
       await Promise.all([...$("adminDrivers").querySelectorAll("[data-vehicle-media]")].map(loadVehiclePhotoImage));
-      await loadAdminVehicleTypeImages();
+      await loadAdminVehicleCatalog();
       $("adminBookings").innerHTML = bookings.items.slice(0,25).map((b) =>
         '<article class="ride-card"><strong>' + escapeHtml(b.destination_text) + '</strong><small>' + escapeHtml(b.status) + ' · Passenger ' + escapeHtml(b.passenger_id) + '</small></article>'
       ).join("") || '<div class="empty-state">No bookings yet.</div>';
@@ -557,10 +579,25 @@
     try { await api(path, {method:"POST"}); loadAdmin(); }
     catch (e) { alert(e.message); }
   }
-  document.addEventListener("click", (event) => {
+  document.addEventListener("click", async (event) => {
+    const saveCatalogButton=event.target.closest("[data-save-catalog]");
+    if(saveCatalogButton){
+      saveCatalogButton.disabled=true;
+      try{
+        await saveVehicleCatalogItem(saveCatalogButton.dataset.saveCatalog);
+        if($("vehicleAssetsMessage"))message("vehicleAssetsMessage","Vehicle details saved.","success");
+        haptic("success");
+      }catch(error){
+        if($("vehicleAssetsMessage"))message("vehicleAssetsMessage",error.message||"Could not save vehicle.","error");
+        haptic("error");
+      }finally{saveCatalogButton.disabled=false;}
+      return;
+    }
     const pressedButton = event.target.closest("button");
     if (pressedButton && !pressedButton.disabled) haptic("light");
     if (event.target === $("locationPicker")) closeLocationPicker();
+    const vehicleChoice=event.target.closest("[data-vehicle-choice]");
+    if(vehicleChoice)chooseVehicle(vehicleChoice.dataset.vehicleChoice);
     const tab = event.target.closest(".bottom-nav .tab");
     if (tab) setView(tab.dataset.view);
     const openView = event.target.closest("[data-open-view]");
@@ -572,23 +609,18 @@
     const block = event.target.closest("[data-block]"); if (block && confirm("Block this driver and account?")) adminAction("/api/admin/drivers/" + encodeURIComponent(block.dataset.block) + "/block");
   });
   document.addEventListener("change", async (event) => {
-    const typeInput = event.target.closest("[data-update-vehicle-type]");
-    if (typeInput && typeInput.files && typeInput.files[0]) {
-      const vehicleType = typeInput.dataset.updateVehicleType;
-      typeInput.disabled = true;
-      try {
-        const media = await uploadMediaFile(typeInput.files[0], "vehicle");
-        await api("/api/admin/vehicle-type-images", {
-          method:"POST", body:JSON.stringify({ vehicle_type:vehicleType, media_id:media.id })
-        });
-        if ($("vehicleAssetsMessage")) message("vehicleAssetsMessage", vehicleTypeLabels[vehicleType] + " image saved.", "success");
+    const catalogImageInput=event.target.closest("[data-catalog-image-file]");
+    if(catalogImageInput&&catalogImageInput.files&&catalogImageInput.files[0]){
+      catalogImageInput.disabled=true;
+      try{
+        const media=await uploadMediaFile(catalogImageInput.files[0],"vehicle");
+        await saveVehicleCatalogItem(catalogImageInput.dataset.catalogImageFile,media.id);
+        if($("vehicleAssetsMessage"))message("vehicleAssetsMessage","Vehicle image and details saved.","success");
         haptic("success");
-        await loadAdminVehicleTypeImages();
-        await loadVehicleTypeImages();
-      } catch (error) {
-        if ($("vehicleAssetsMessage")) message("vehicleAssetsMessage", error.message || "Vehicle image update failed.", "error");
+      }catch(error){
+        if($("vehicleAssetsMessage"))message("vehicleAssetsMessage",error.message||"Vehicle image update failed.","error");
         haptic("error");
-      } finally { typeInput.disabled = false; typeInput.value = ""; }
+      }finally{catalogImageInput.disabled=false;catalogImageInput.value="";}
       return;
     }
     const input = event.target.closest("[data-update-vehicle-photo]");
@@ -622,6 +654,33 @@
     if (hint) hint.classList.add("hidden");
     preview.classList.add("has-image");
   });
+  $("addVehicleBtn").addEventListener("click",async()=>{
+    const name=$("newVehicleName").value.trim(),priceInput=$("newVehiclePrice").value;
+    const price=Number(priceInput),file=$("newVehicleImage").files[0]||null;
+    if(name.length<2){message("vehicleAssetsMessage","Enter a vehicle name.","error");return;}
+    if(priceInput===""||!Number.isFinite(price)||price<0||price>10000){message("vehicleAssetsMessage","Enter a valid price per kilometre.","error");return;}
+    if(!file){message("vehicleAssetsMessage","Please choose a square vehicle image.","error");return;}
+    const button=$("addVehicleBtn");button.disabled=true;
+    try{
+      const media=await uploadMediaFile(file,"vehicle"),type=slugForVehicleName(name);
+      await api("/api/admin/vehicle-catalog",{method:"POST",body:JSON.stringify({vehicle_type:type,display_name:name,price_per_km:price,media_id:media.id})});
+      $("newVehicleName").value="";$("newVehiclePrice").value="";$("newVehicleImage").value="";
+      const preview=$("newVehicleImagePreview");preview.classList.remove("has-image");
+      preview.querySelector("img").classList.add("hidden");preview.querySelector("span").classList.remove("hidden");
+      await loadAdminVehicleCatalog();await loadVehicleCatalog();
+      message("vehicleAssetsMessage","Vehicle added successfully.","success");haptic("success");
+    }catch(error){message("vehicleAssetsMessage",error.message||"Could not add vehicle.","error");haptic("error");}
+    finally{button.disabled=false;}
+  });
+  $("newVehicleImage").addEventListener("change",()=>{
+    const file=$("newVehicleImage").files[0],preview=$("newVehicleImagePreview");
+    const img=preview.querySelector("img"),hint=preview.querySelector("span");
+    if(!file){img.classList.add("hidden");hint.classList.remove("hidden");preview.classList.remove("has-image");return;}
+    if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>10*1024*1024){
+      $("newVehicleImage").value="";message("vehicleAssetsMessage","Use JPG, PNG or WebP up to 10 MB.","error");return;
+    }
+    img.src=URL.createObjectURL(file);img.classList.remove("hidden");hint.classList.add("hidden");preview.classList.add("has-image");
+  });
   $("locateBtn").addEventListener("click",()=>openLocationPicker("pickup"));
   $("pickupText").addEventListener("click",()=>openLocationPicker("pickup"));
   $("destination").addEventListener("click",()=>openLocationPicker("destination"));
@@ -631,7 +690,6 @@
   $("confirmLocationPicker").addEventListener("click",confirmLocationPicker);
   $("useCurrentLocation").addEventListener("click",()=>requestCurrentLocation(true));
   $("distanceMode").addEventListener("change",e=>{state.distanceMode=e.target.value;updateDistance();});
-  document.querySelectorAll("[data-vehicle-choice]").forEach(x=>x.addEventListener("click",()=>chooseVehicle(x.dataset.vehicleChoice)));
   $("useMapLinkBtn").addEventListener("click",useMapLink);
   $("destination").addEventListener("change",()=>{const p=coordsFromMapLink($("destination").value);if(p){state.mapCandidate=p;setDestination(p,$("destination").value);}});
   $("bookBtn").addEventListener("click", bookRide);
@@ -651,6 +709,23 @@
 (() => {
   const dictionaries = {
     km: {
+      "Vehicle catalogue":"បញ្ជីយានយន្ត",
+      "Add vehicle types, change display names, and set the price charged per kilometre.":"បន្ថែមប្រភេទយានយន្ត ប្ដូរឈ្មោះ និងកំណត់តម្លៃក្នុងមួយគីឡូម៉ែត្រ។",
+      "ADD NEW VEHICLE":"បន្ថែមយានយន្តថ្មី",
+      "Vehicle name":"ឈ្មោះយានយន្ត",
+      "Price per kilometre (USD)":"តម្លៃក្នុងមួយគីឡូម៉ែត្រ (ដុល្លារ)",
+      "Image guide":"ការណែនាំអំពីរូបភាព",
+      "Square 1:1 · Recommended 512 × 512 px · JPG, PNG or WebP · Maximum 10 MB · Transparent or clean background":"រូបការ៉េ 1:1 · ណែនាំ 512 × 512 px · JPG, PNG ឬ WebP · អតិបរមា 10 MB · ផ្ទៃថ្លា ឬស្អាត",
+      "1:1 PREVIEW":"មើលរូប 1:1",
+      "CHANGE IMAGE":"ប្ដូររូបភាព",
+      "SAVE VEHICLE":"រក្សាទុកយានយន្ត",
+      "ADD VEHICLE":"បន្ថែមយានយន្ត",
+      "Vehicle added successfully.":"បានបន្ថែមយានយន្តដោយជោគជ័យ។",
+      "Vehicle details saved.":"បានរក្សាទុកព័ត៌មានយានយន្ត។",
+      "Vehicle image and details saved.":"បានរក្សាទុករូប និងព័ត៌មានយានយន្ត។",
+      "Enter a vehicle name.":"សូមបញ្ចូលឈ្មោះយានយន្ត។",
+      "Enter a valid price per kilometre.":"សូមបញ្ចូលតម្លៃក្នុងមួយគីឡូម៉ែត្រឲ្យត្រឹមត្រូវ។",
+
       "Vehicle display images":"រូបភាពយានយន្តដែលបង្ហាញក្នុងកម្មវិធី",
       "Change the default images displayed on the Ride screen. These are separate from each driver's personal vehicle photo.":"ប្ដូររូបភាពយានយន្តលំនាំដើមនៅទំព័រកក់ដំណើរ។ រូបទាំងនេះខុសពីរូបរថយន្តផ្ទាល់ខ្លួនរបស់អ្នកបើកបរ។",
       "CHANGE IMAGE":"ប្ដូររូបភាព",
@@ -797,6 +872,23 @@
       "Block this driver and account?":"តើអ្នកចង់បិទអ្នកបើកបរ និងគណនីនេះមែនទេ?"
     },
     zh: {
+      "Vehicle catalogue":"车辆目录",
+      "Add vehicle types, change display names, and set the price charged per kilometre.":"添加车辆类型、更改显示名称并设置每公里收费。",
+      "ADD NEW VEHICLE":"添加新车辆",
+      "Vehicle name":"车辆名称",
+      "Price per kilometre (USD)":"每公里价格（美元）",
+      "Image guide":"图片要求",
+      "Square 1:1 · Recommended 512 × 512 px · JPG, PNG or WebP · Maximum 10 MB · Transparent or clean background":"1:1 正方形 · 推荐 512 × 512 像素 · JPG、PNG 或 WebP · 最大 10 MB · 透明或干净背景",
+      "1:1 PREVIEW":"1:1 预览",
+      "CHANGE IMAGE":"更换图片",
+      "SAVE VEHICLE":"保存车辆",
+      "ADD VEHICLE":"添加车辆",
+      "Vehicle added successfully.":"车辆添加成功。",
+      "Vehicle details saved.":"车辆信息已保存。",
+      "Vehicle image and details saved.":"车辆图片和信息已保存。",
+      "Enter a vehicle name.":"请输入车辆名称。",
+      "Enter a valid price per kilometre.":"请输入有效的每公里价格。",
+
       "Vehicle display images":"车辆展示图片",
       "Change the default images displayed on the Ride screen. These are separate from each driver's personal vehicle photo.":"更改叫车页面上显示的默认车辆图片。这些图片与司机个人车辆照片分开管理。",
       "CHANGE IMAGE":"更换图片",
