@@ -307,12 +307,43 @@
       button.classList.toggle("active",active);
       button.setAttribute("aria-pressed",String(active));
     });
+    renderFareSummary();
   }
+
+  function formatFare(value){return "US$"+Number(value||0).toFixed(2);}
+  function renderFareSummary(){
+    const box=$("fareSummary");if(!box)return;
+    const type=$("vehicleType")?.value||"all",vehicle=vehicleCatalog.find(item=>item.vehicle_type===type);
+    if(!vehicle||!state.destination||!Number.isFinite(state.distanceKm)||state.distanceKm<=0){box.classList.add("hidden");return;}
+    const base=Number(vehicle.base_fare||0),perKm=Number(vehicle.price_per_km||0),minimum=Number(vehicle.minimum_fare||0);
+    $("fareVehicleName").textContent=vehicle.display_name;
+    $("fareDistance").textContent=state.distanceKm.toFixed(2)+" km";
+    $("fareBase").textContent=formatFare(base);
+    $("farePerKm").textContent=formatFare(perKm)+" / km";
+    $("fareMinimum").textContent=formatFare(minimum);
+    $("fareTotal").textContent=formatFare(Math.max(minimum,base+perKm*state.distanceKm));
+    box.classList.remove("hidden");
+  }
+
   async function openLocationPicker(mode){state.pickerMode=mode;state.mapMode=mode;$("locationModalTitle").textContent=mode==="pickup"?"Choose pickup point":"Choose destination";$("locationModalHint").textContent=mode==="pickup"?"The center pin marks your real pickup location. Move the map to adjust.":"Move the map until the center pin marks your destination."; const modal=$("locationPicker");if(locationCloseTimer){clearTimeout(locationCloseTimer);locationCloseTimer=null;}modal.classList.remove("hidden","is-closing");initMap();if(!state.map)return;startLiveMap();const existing=mode==="pickup"?state.pickup:state.destination;if(existing){state.map.setView([existing.lat,existing.lon],16);}else if(mode==="pickup"){await requestCurrentLocation(false);}else if(state.pickup){state.map.setView([state.pickup.lat,state.pickup.lon],14);}setTimeout(()=>{state.map.invalidateSize();const c=state.map.getCenter();state.mapCandidate={lat:c.lat,lon:c.lng};$("selectedCoordinates").textContent=c.lat.toFixed(5)+", "+c.lng.toFixed(5);updateDistance();},180);}
   function closeLocationPicker(){ const modal=$("locationPicker"); if(!modal||modal.classList.contains("hidden")||modal.classList.contains("is-closing"))return; modal.classList.add("is-closing"); if(locationCloseTimer)clearTimeout(locationCloseTimer); locationCloseTimer=setTimeout(()=>{modal.classList.add("hidden");modal.classList.remove("is-closing");locationCloseTimer=null;},230); }
   function confirmLocationPicker(){const p=state.mapCandidate;if(!p)return;if(state.pickerMode==="pickup")setPickup(p,"GPS / Map: "+p.lat.toFixed(5)+", "+p.lon.toFixed(5));else setDestination(p,"Map: "+p.lat.toFixed(5)+", "+p.lon.toFixed(5));closeLocationPicker();updateDistance();}
   function haversine(a,b){const rad=x=>x*Math.PI/180,R=6371,dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon),q=Math.sin(dLat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(q));}
-  async function updateDistance(){if(!state.pickup||!state.destination){$("distanceInfo").textContent="Choose pickup and destination to calculate distance.";state.distanceKm=null;return;}if(state.distanceMode==="map"){state.distanceKm=haversine(state.pickup,state.destination);$("distanceInfo").textContent="Map distance: "+state.distanceKm.toFixed(2)+" km (straight line).";return;}try{const a=state.pickup,b=state.destination,url="https://router.project-osrm.org/route/v1/driving/"+a.lon+","+a.lat+";"+b.lon+","+b.lat+"?overview=full&geometries=geojson";$("distanceInfo").textContent="Calculating actual road distance…";const data=await(await fetch(url)).json();if(!data.routes||!data.routes[0])throw new Error("No driving route");state.distanceKm=data.routes[0].distance/1000;const pts=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);if(state.selectedRouteLine)state.map.removeLayer(state.selectedRouteLine);state.selectedRouteLine=L.polyline(pts,{color:"#FFC928",weight:4,opacity:.9,dashArray:"7 6"}).addTo(state.map);$("distanceInfo").textContent="Actual driving distance: "+state.distanceKm.toFixed(2)+" km."; }catch(_){state.distanceKm=null;$("distanceInfo").textContent="Could not calculate road route. Try map distance.";}}
+  async function updateDistance(){
+    if(!state.pickup||!state.destination){$("distanceInfo").textContent="Choose pickup and destination to calculate distance.";state.distanceKm=null;renderFareSummary();return;}
+    if(state.distanceMode==="map"){state.distanceKm=haversine(state.pickup,state.destination);$("distanceInfo").textContent="Map distance: "+state.distanceKm.toFixed(2)+" km (straight line).";renderFareSummary();return;}
+    try{
+      const a=state.pickup,b=state.destination,url="https://router.project-osrm.org/route/v1/driving/"+a.lon+","+a.lat+";"+b.lon+","+b.lat+"?overview=full&geometries=geojson";
+      $("distanceInfo").textContent="Calculating actual road distance…";
+      const response=await fetch(url);if(!response.ok)throw new Error("Route service unavailable");
+      const data=await response.json();if(!data.routes||!data.routes[0])throw new Error("No driving route");
+      state.distanceKm=data.routes[0].distance/1000;
+      const pts=data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);
+      if(state.selectedRouteLine&&state.map)state.map.removeLayer(state.selectedRouteLine);
+      if(state.map)state.selectedRouteLine=L.polyline(pts,{color:"#FFC928",weight:4,opacity:.9,dashArray:"7 6"}).addTo(state.map);
+      $("distanceInfo").textContent="Actual driving distance: "+state.distanceKm.toFixed(2)+" km.";renderFareSummary();
+    }catch(_){state.distanceKm=null;$("distanceInfo").textContent="Could not calculate road route. Try map distance.";renderFareSummary();}
+  }
   async function getTelegramLocation(){
     const lm=tg&&tg.LocationManager;
     if(!lm)return null;
@@ -352,6 +383,23 @@
       else console.warn("Could not get pickup location:",error);
     }
   }
+
+  async function autoDetectPickup(){
+    if(state.pickup)return;
+    try{
+      let p=await getTelegramLocation();
+      if(!p){
+        if(!navigator.geolocation)throw new Error("GPS is unavailable");
+        p=await new Promise((resolve,reject)=>navigator.geolocation.getCurrentPosition(
+          pos=>resolve({lat:pos.coords.latitude,lon:pos.coords.longitude,accuracy:pos.coords.accuracy}),
+          err=>reject(new Error(err.message||"GPS permission denied")),
+          {enableHighAccuracy:true,timeout:15000,maximumAge:60000}
+        ));
+      }
+      setPickup(p,"Current location (GPS)");state.locationPermission="granted";await updateDistance();
+    }catch(error){console.warn("Automatic pickup GPS unavailable:",error);const field=$("pickupText");if(field)field.placeholder="GPS unavailable — tap CHOOSE to set pickup";}
+  }
+
   async function checkLocationPermission(){if(!navigator.permissions||!navigator.permissions.query)return;try{const p=await navigator.permissions.query({name:"geolocation"});state.locationPermission=p.state;p.onchange=()=>{state.locationPermission=p.state;};}catch(_){} }
 
 
@@ -395,6 +443,7 @@
       await new Promise(resolve=>setTimeout(resolve,360));
       $("loading").classList.add("hidden");
       $("loading").classList.remove("is-leaving");
+      autoDetectPickup();
     }catch(error){showError(error);}
   }
 
