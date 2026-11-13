@@ -729,7 +729,7 @@ button:active {
 }
 
 .vehicle-option.active {
-  transform: translateZ(42px) scale(1.025);
+  z-index: 2;
 }
 
 .vehicle-option.active::after {
