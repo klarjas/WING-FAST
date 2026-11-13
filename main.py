@@ -257,7 +257,7 @@ def clean(value, maximum, label):
 
 class DriverApplication(BaseModel):
     phone: str = Field(min_length=6, max_length=30)
-    vehicle_type: str = Field(pattern="^(car|suv|tuk_tuk|motorbike|van)$")
+    vehicle_type: str = Field(min_length=2, max_length=40, pattern="^[a-z][a-z0-9_]{1,39}$")
     vehicle_model: str = Field(min_length=2, max_length=100)
     plate_number: str = Field(min_length=2, max_length=30)
     vehicle_photo_media_id: str = Field(min_length=36, max_length=36)
@@ -272,9 +272,12 @@ class VehiclePhotoUpdate(BaseModel):
     media_id: str = Field(min_length=36, max_length=36)
 
 
-class VehicleTypeImageSave(BaseModel):
-    vehicle_type: str = Field(pattern="^(suv|car|tuk_tuk|motorbike|van)$")
-    media_id: str = Field(min_length=36, max_length=36)
+class VehicleCatalogSave(BaseModel):
+    vehicle_type: str = Field(min_length=2, max_length=40, pattern="^[a-z][a-z0-9_]{1,39}$")
+    display_name: str = Field(min_length=2, max_length=60)
+    price_per_km: float = Field(ge=0, le=10000)
+    media_id: Optional[str] = Field(default=None, min_length=36, max_length=36)
+    is_active: bool = True
 
 
 class PromotionSave(BaseModel):
@@ -288,7 +291,7 @@ class BookingCreate(BaseModel):
     destination_text: str = Field(min_length=2, max_length=180)
     destination_lat: Optional[float] = Field(default=None, ge=-90, le=90)
     destination_lon: Optional[float] = Field(default=None, ge=-180, le=180)
-    vehicle_type: str = Field(default="all", pattern="^(all|car|suv|tuk_tuk|motorbike|van)$")
+    vehicle_type: str = Field(default="all", min_length=2, max_length=40, pattern="^(all|[a-z][a-z0-9_]{1,39})$")
     payment_method: str = Field(default="cash", pattern="^(cash|digital)$")
     distance_mode: str = Field(default="road", pattern="^(road|map)$")
     estimated_distance_km: Optional[float] = Field(default=None, ge=0, le=10000)
@@ -357,6 +360,12 @@ def driver_apply(payload: DriverApplication, authorization: Optional[str] = Head
     plate = clean(payload.plate_number, 30, "License plate")
     normalized = re.sub(r"[^A-Z0-9]", "", plate.upper())
     with db() as conn:
+        catalogue_vehicle = conn.execute("""
+            SELECT vehicle_type FROM public.vehicle_catalog
+            WHERE vehicle_type=%s AND is_active=TRUE
+        """, (payload.vehicle_type,)).fetchone()
+        if not catalogue_vehicle:
+            raise HTTPException(422, "This vehicle type is not available. Refresh and choose an active vehicle.")
         photo = conn.execute("""
             SELECT id FROM public.media_files
             WHERE id=%s AND category='vehicle' AND uploaded_by=%s
@@ -442,9 +451,15 @@ def create_booking(payload: BookingCreate, authorization: Optional[str] = Header
     with db() as conn:
         price = conn.execute("""
             SELECT base_fare, price_per_km, minimum_fare
-            FROM public.pricing
+            FROM public.vehicle_catalog
             WHERE vehicle_type=%s AND is_active=TRUE
         """, (payload.vehicle_type,)).fetchone()
+        if not price and payload.vehicle_type != "all":
+            price = conn.execute("""
+                SELECT base_fare, price_per_km, minimum_fare
+                FROM public.pricing
+                WHERE vehicle_type=%s AND is_active=TRUE
+            """, (payload.vehicle_type,)).fetchone()
         estimated_fare = None
         if price and payload.estimated_distance_km is not None:
             estimated_fare = max(
@@ -678,38 +693,71 @@ def admin_update_vehicle_photo(driver_id: str, payload: VehiclePhotoUpdate,
     return {"ok": True, "vehicle_photo_media_id": payload.media_id}
 
 
-@app.get("/api/vehicle-type-images")
-def get_vehicle_type_images(authorization: Optional[str] = Header(default=None)):
+@app.get("/api/vehicle-catalog")
+def get_vehicle_catalog(authorization: Optional[str] = Header(default=None)):
     auth_user(authorization)
     with db() as conn:
         rows = conn.execute("""
-            SELECT vehicle_type, media_id::TEXT AS media_id
-            FROM public.vehicle_type_images
-            ORDER BY vehicle_type
+            SELECT vehicle_type, display_name, price_per_km, media_id::TEXT AS media_id,
+                   is_active, sort_order
+            FROM public.vehicle_catalog
+            WHERE is_active=TRUE
+            ORDER BY sort_order, display_name
         """).fetchall()
     return {"items": [dict(row) for row in rows]}
 
 
-@app.post("/api/admin/vehicle-type-images")
-def save_vehicle_type_image(payload: VehicleTypeImageSave,
-                            authorization: Optional[str] = Header(default=None)):
+@app.get("/api/admin/vehicle-catalog")
+def admin_vehicle_catalog(authorization: Optional[str] = Header(default=None)):
     user = auth_user(authorization)
     require_admin(user)
     with db() as conn:
-        media = conn.execute("""
-            SELECT id FROM public.media_files
-            WHERE id=%s AND category='vehicle' AND uploaded_by=%s
-        """, (payload.media_id, user["id"])).fetchone()
-        if not media:
-            raise HTTPException(403, "Upload the vehicle image using the admin account first")
-        conn.execute("""
-            INSERT INTO public.vehicle_type_images (vehicle_type, media_id, updated_at)
-            VALUES (%s,%s,NOW())
-            ON CONFLICT (vehicle_type) DO UPDATE SET
-                media_id=EXCLUDED.media_id,
-                updated_at=NOW()
-        """, (payload.vehicle_type, payload.media_id))
-    return {"ok": True, "vehicle_type": payload.vehicle_type, "media_id": payload.media_id}
+        rows = conn.execute("""
+            SELECT vehicle_type, display_name, price_per_km, media_id::TEXT AS media_id,
+                   is_active, sort_order
+            FROM public.vehicle_catalog
+            ORDER BY sort_order, display_name
+        """).fetchall()
+    return {"items": [dict(row) for row in rows]}
+
+
+@app.post("/api/admin/vehicle-catalog")
+def save_vehicle_catalog(payload: VehicleCatalogSave,
+                         authorization: Optional[str] = Header(default=None)):
+    user = auth_user(authorization)
+    require_admin(user)
+    name = clean(payload.display_name, 60, "Vehicle name")
+    with db() as conn:
+        if payload.media_id:
+            media = conn.execute("""
+                SELECT id FROM public.media_files
+                WHERE id=%s AND category='vehicle' AND uploaded_by=%s
+            """, (payload.media_id, user["id"])).fetchone()
+            if not media:
+                raise HTTPException(403, "Upload the vehicle image using the admin account first")
+        current = conn.execute("""
+            SELECT vehicle_type FROM public.vehicle_catalog WHERE vehicle_type=%s
+        """, (payload.vehicle_type,)).fetchone()
+        if current:
+            conn.execute("""
+                UPDATE public.vehicle_catalog
+                SET display_name=%s, price_per_km=%s,
+                    media_id=COALESCE(%s, media_id),
+                    is_active=%s, updated_at=NOW()
+                WHERE vehicle_type=%s
+            """, (name, payload.price_per_km, payload.media_id,
+                  payload.is_active, payload.vehicle_type))
+        else:
+            conn.execute("""
+                INSERT INTO public.vehicle_catalog
+                    (vehicle_type, display_name, price_per_km, media_id, is_active, sort_order, updated_at)
+                VALUES (%s,%s,%s,%s,%s,
+                    COALESCE((SELECT MAX(sort_order)+1 FROM public.vehicle_catalog), 1), NOW())
+            """, (payload.vehicle_type, name, payload.price_per_km,
+                  payload.media_id, payload.is_active))
+    return {"ok": True, "vehicle_type": payload.vehicle_type}
+
+
 
 
 @app.post("/api/admin/drivers/{driver_id}/approve")
