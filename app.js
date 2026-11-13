@@ -4,9 +4,9 @@
   if (tg) {
     tg.ready();
     try {
-      tg.setBackgroundColor("#F5F7FA");
-      tg.setHeaderColor("#F5F7FA");
-      if (typeof tg.setBottomBarColor === "function") tg.setBottomBarColor("#F5F7FA");
+      tg.setBackgroundColor("#F4F7FB");
+      tg.setHeaderColor("#F4F7FB");
+      if (typeof tg.setBottomBarColor === "function") tg.setBottomBarColor("#F4F7FB");
       // Keep the normal Telegram Mini App window; do not force fullscreen.
       if (typeof tg.expand === "function") tg.expand();
     } catch (error) {
